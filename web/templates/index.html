@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rosetta — translate anything, into anything</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22none%22 stroke=%22%234f8ff7%22 stroke-width=%222%22/><text x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22%234f8ff7%22 font-family=%22serif%22>&#10101;</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark">&#10101;</span>
+        <div>
+          <h1>Rosetta</h1>
+          <p class="subtitle">Translate anything, into anything.</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">&#9680;</button>
+        <a class="repo-link" href="https://github.com/adi45726/rosetta-translate" target="_blank" rel="noopener">GitHub &#8599;</a>
+      </div>
+    </header>
+
+    <main class="card">
+      <div class="lang-row">
+        <select id="source-lang" aria-label="Source language"></select>
+        <button id="btn-swap" class="icon-btn" title="Swap languages" aria-label="Swap languages">&#8646;</button>
+        <select id="target-lang" aria-label="Target language"></select>
+      </div>
+
+      <div class="panes">
+        <div class="pane">
+          <textarea id="source-text" placeholder="Type to translate…" maxlength="500" spellcheck="false"></textarea>
+          <div class="pane-foot">
+            <span id="detected-pill" class="pill hidden"></span>
+            <span id="char-count" class="char-count">0 / 500</span>
+          </div>
+        </div>
+        <div class="pane">
+          <div id="target-text" class="output" aria-live="polite">
+            <span class="hint">Translation will appear here.</span>
+          </div>
+          <div class="pane-foot">
+            <span id="status-pill" class="status-pill"></span>
+            <button id="btn-copy" class="text-btn" disabled>Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-banner" class="error-banner hidden"></div>
+    </main>
+
+    <footer class="footnote">
+      Translations via the <a href="https://mymemory.translated.net" target="_blank" rel="noopener">MyMemory API</a>.
+      Nothing you type is stored by this app.
+    </footer>
+  </div>
+
+  <script id="languages-data" type="application/json">{{ languages | tojson }}</script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

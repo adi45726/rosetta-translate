@@ -1,0 +1,4 @@
+-r requirements.txt
+-r web/requirements.txt
+ruff>=0.16
+mypy>=1.13
