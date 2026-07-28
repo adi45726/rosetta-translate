@@ -29,6 +29,62 @@ def test_translate_success(mock_get):
 
 
 @patch("translator.client.requests.get")
+def test_translate_prefers_higher_quality_match_over_top_level_field(mock_get):
+    # Regression test: confirmed live against api.mymemory.translated.net for
+    # "Good morning, how are you?" en->es. The top-level responseData field
+    # picked a quality:"0" crowd-sourced entry (wrong translation) over a
+    # quality:"74" entry sitting right below it in `matches` (correct).
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "Ahora que no estás, que no te puedo ver"},
+            "matches": [
+                {
+                    "match": 1,
+                    "quality": "0",
+                    "created-by": "Public_Corpora",
+                    "translation": "Ahora que no estás, que no te puedo ver",
+                },
+                {
+                    "match": 0.99,
+                    "quality": "74",
+                    "created-by": "MateCat",
+                    "translation": "Buenos días, ¿cómo está?",
+                },
+            ],
+        }
+    )
+    assert translate("Good morning, how are you?", "en", "es") == "Buenos días, ¿cómo está?"
+
+
+@patch("translator.client.requests.get")
+def test_translate_falls_back_to_top_level_field_when_no_good_matches(mock_get):
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "some MT-only result"},
+            "matches": [],
+        }
+    )
+    assert translate("hi", "en", "es") == "some MT-only result"
+
+
+@patch("translator.client.requests.get")
+def test_translate_ignores_all_low_quality_matches_and_falls_back(mock_get):
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "fallback text"},
+            "matches": [
+                {"match": 1, "quality": "0", "created-by": "x", "translation": "garbage"},
+                {"match": 0.9, "quality": "10", "created-by": "y", "translation": "also garbage"},
+            ],
+        }
+    )
+    assert translate("hi", "en", "es") == "fallback text"
+
+
+@patch("translator.client.requests.get")
 def test_translate_same_language_provider_error(mock_get):
     # MyMemory answers this with HTTP 200 but responseStatus "403" in the body.
     mock_get.return_value = _mock_response(
