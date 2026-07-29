@@ -36,7 +36,7 @@ from typing import Any
 import requests
 
 from .exceptions import ProviderError, ProviderUnavailableError
-from .languages import AUTO_DETECT, LANGUAGE_CODES, language_name
+from .languages import AUTO_DETECT, LANGUAGE_CODES, LANGUAGE_NAMES, language_name
 from .result import PROVIDER_GROQ, TranslationResult
 
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
@@ -307,6 +307,27 @@ def _clean_str(value: Any) -> str | None:
     return stripped
 
 
+def _known_language_name(value: Any) -> str | None:
+    """Accept a model-reported language name only if it is one we actually list.
+
+    The camera prompt asks for a free-text `detected_language`, and whatever it
+    returns is shown to the user as a statement of fact. An unvalidated string
+    there means the interface will confidently report a language that may not
+    exist, so anything outside our own list is dropped rather than displayed.
+    """
+    name = _clean_str(value)
+    if name is None:
+        return None
+    lowered = name.strip().lower()
+    for known in LANGUAGE_NAMES.values():
+        if known.lower() == lowered:
+            return known
+    # Also accept a bare code, which some models return despite the prompt.
+    if lowered in LANGUAGE_CODES:
+        return LANGUAGE_NAMES[lowered]
+    return None
+
+
 def _normalise_detected(value: Any, requested_source: str) -> str | None:
     if requested_source != AUTO_DETECT:
         return None
@@ -547,7 +568,7 @@ def scan_and_translate_image(image: bytes, mime_type: str, target_name: str) -> 
     }
     parsed = _parse_payload(_content_of(_post(payload, key)))
     return {
-        "detected_language": _clean_str(parsed.get("detected_language")),
+        "detected_language": _known_language_name(parsed.get("detected_language")),
         "source_text": _clean_str(parsed.get("source_text")) or "",
         "translated_text": _clean_str(parsed.get("translated_text")) or "",
         "regions": [],

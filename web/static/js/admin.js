@@ -29,11 +29,25 @@ function renderCustomers(users) {
 }
 function render(data) {
   const metrics = data.metrics;
-  byId("metric-users").textContent = metrics.total_users.toLocaleString();
+  // Both reads are capped server-side, so these are counts of the sample. The
+  // "+" is not decoration: showing a truncated read as a total is a wrong
+  // number stated as a fact, which is worse than an obviously approximate one.
+  const users = metrics.users_in_sample ?? 0;
+  const requests = metrics.requests_in_sample ?? 0;
+  byId("metric-users").textContent =
+    users.toLocaleString() + (metrics.users_truncated ? "+" : "");
   byId("metric-split").textContent = `${metrics.registered_users} members · ${metrics.guest_users} guests`;
-  byId("metric-requests").textContent = metrics.requests.toLocaleString();
+  byId("metric-requests").textContent =
+    requests.toLocaleString() + (metrics.events_truncated ? "+" : "");
   byId("metric-speed").textContent = `${metrics.average_speed_ms} ms`;
-  byId("metric-errors").textContent = metrics.requests ? `${((metrics.errors / metrics.requests) * 100).toFixed(1)}%` : "0%";
+  byId("metric-errors").textContent = requests ? `${((metrics.errors / requests) * 100).toFixed(1)}%` : "0%";
+  const cap = metrics.sample_limits;
+  const note = byId("metric-sample-note");
+  if (note && cap) {
+    note.textContent = (metrics.users_truncated || metrics.events_truncated)
+      ? `Sampled: latest ${cap.users} profiles and ${cap.events} events.`
+      : "";
+  }
   const features = Object.entries(metrics.feature_counts).sort((a, b) => b[1] - a[1]);
   const max = features[0]?.[1] || 1;
   byId("feature-chart").innerHTML = features.map(([name, count]) => `<div><span>${escapeText(name.replaceAll("-", " "))}</span><i><b style="width:${count / max * 100}%"></b></i><strong>${count}</strong></div>`).join("") || "<p>No activity yet.</p>";
@@ -66,10 +80,10 @@ async function loadDashboard() {
     users,
     recent_events: events.slice(0, 100),
     metrics: {
-      total_users: users.length,
+      users_in_sample: users.length,
       registered_users: users.filter((user) => !user.anonymous).length,
       guest_users: users.filter((user) => user.anonymous).length,
-      requests: events.length,
+      requests_in_sample: events.length,
       errors,
       average_speed_ms: events.length ? Math.round(totalSpeed / events.length) : 0,
       feature_counts: featureCounts

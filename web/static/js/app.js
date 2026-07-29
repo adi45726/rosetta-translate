@@ -158,6 +158,7 @@ function syncModalBackdrop() {
     || !voiceModePanel.classList.contains("hidden")
     || !companionPanel.classList.contains("hidden")
     || !practicePanel.classList.contains("hidden")
+    || !mapPanel.classList.contains("hidden")
     || !el("payment-panel")?.classList.contains("hidden")
     || !toolsPanel.classList.contains("hidden");
   modalBackdrop.classList.toggle("hidden", !modalOpen);
@@ -191,6 +192,7 @@ modalBackdrop.addEventListener("click", () => {
   else if (!voiceModePanel.classList.contains("hidden")) closeVoiceMode();
   else if (!companionPanel.classList.contains("hidden")) closeCompanion();
   else if (!practicePanel.classList.contains("hidden")) closePractice();
+  else if (!mapPanel.classList.contains("hidden")) closeMap();
   else closeTools();
 });
 
@@ -273,33 +275,59 @@ async function openCamera() {
   await startCamera();
 }
 
+/**
+ * Show the camera translation as a caption, not as a located overlay.
+ *
+ * This used to position a card at x:0.07 y:0.7 whenever the server returned no
+ * regions -- which is always, because the vision prompt never asks for bounding
+ * boxes and the endpoint returns `regions: []` unconditionally. A card pinned
+ * over the frame says "the text is *here*", and that claim was invented: the
+ * coordinates were hardcoded and identical for every image.
+ *
+ * Asking the model for boxes instead would not fix it. Vision models are
+ * unreliable at precise coordinates, so it would trade a visibly fixed lie for
+ * a plausible-looking one, which is worse. So the translation is presented
+ * honestly as a caption of the whole frame. If real per-region boxes ever
+ * arrive from the provider, `data.regions` is still honoured and positioned.
+ */
 function renderCameraRegions(data) {
   cameraResult = data;
   btnUseCameraText.disabled = !data.source_text;
   btnCopyCameraText.disabled = !data.translated_text;
   cameraRegions.innerHTML = "";
-  const regions = data.regions?.length
-    ? data.regions
-    : (data.translated_text ? [{
-        translation: data.translated_text, source: data.source_text,
-        x: 0.07, y: 0.7, width: 0.86, height: 0.18,
-      }] : []);
-  regions.forEach((region) => {
-    const card = document.createElement("div");
-    card.className = "camera-translation";
-    card.style.left = `${region.x * 100}%`;
-    card.style.top = `${region.y * 100}%`;
-    card.style.width = `${Math.max(20, region.width * 100)}%`;
-    const translated = document.createElement("strong");
-    translated.textContent = region.translation;
-    card.appendChild(translated);
-    if (region.source) {
-      const source = document.createElement("small");
-      source.textContent = region.source;
-      card.appendChild(source);
-    }
-    cameraRegions.appendChild(card);
-  });
+
+  if (data.regions?.length) {
+    data.regions.forEach((region) => {
+      const card = document.createElement("div");
+      card.className = "camera-translation";
+      card.style.left = `${region.x * 100}%`;
+      card.style.top = `${region.y * 100}%`;
+      card.style.width = `${Math.max(20, region.width * 100)}%`;
+      const translated = document.createElement("strong");
+      translated.textContent = region.translation;
+      card.appendChild(translated);
+      if (region.source) {
+        const source = document.createElement("small");
+        source.textContent = region.source;
+        card.appendChild(source);
+      }
+      cameraRegions.appendChild(card);
+    });
+    return;
+  }
+
+  if (!data.translated_text) return;
+  const caption = document.createElement("div");
+  caption.className = "camera-translation is-caption";
+  const translated = document.createElement("strong");
+  translated.textContent = data.translated_text;
+  caption.appendChild(translated);
+  if (data.source_text) {
+    const source = document.createElement("small");
+    source.textContent = data.source_text;
+    caption.appendChild(source);
+  }
+  cameraRegions.appendChild(caption);
 }
 
 async function scanCamera(imageBlob = null) {
@@ -1548,6 +1576,8 @@ document.addEventListener("keydown", (evt) => {
       closeCompanion();
     } else if (!practicePanel.classList.contains("hidden")) {
       closePractice();
+    } else if (!mapPanel.classList.contains("hidden")) {
+      closeMap();
     } else if (!toolsPanel.classList.contains("hidden")) {
       closeTools();
     } else if (!historyPanel.classList.contains("hidden")) {

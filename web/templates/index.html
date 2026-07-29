@@ -32,7 +32,10 @@
         <h1 id="auth-title">Understand the world.<br><em>Speak without limits.</em></h1>
         <p class="auth-lede">Voice, camera, live captions, writing and an intelligent companion—all in one private language workspace.</p>
         <div class="auth-proof">
-          <span><b>75+</b> languages</span>
+          <!-- 75, not "75+": the list in src/translator/languages.py holds
+               exactly 75 entries, and the "+" claimed languages that do not
+               exist. If the list grows, this number moves with it. -->
+          <span><b>75</b> languages</span>
           <span><b>Live</b> voice & camera</span>
           <span><b>Private</b> by design</span>
         </div>
@@ -314,6 +317,31 @@
         </form>
       </div>
       <div id="practice-error" class="companion-error hidden" role="alert"></div>
+    </section>
+
+    <section id="map-panel" class="map-panel glass-surface hidden" aria-labelledby="map-title">
+      <div class="map-head">
+        <div>
+          <span class="section-kicker">Language Map</span>
+          <h2 id="map-title">Pick a language by place</h2>
+        </div>
+        <button id="btn-close-map" class="icon-btn" aria-label="Close map">&times;</button>
+      </div>
+
+      <div class="map-stage">
+        <svg id="map-svg" viewBox="0 0 720 360" role="img" aria-label="World coordinate grid with language markers">
+          <g id="map-graticule" aria-hidden="true"></g>
+          <g id="map-links" aria-hidden="true"></g>
+          <g id="map-markers"></g>
+        </svg>
+        <p id="map-readout" class="map-readout">Hover a marker</p>
+      </div>
+
+      <p class="map-note">
+        Each marker sits at the real coordinates of one representative city per language &mdash;
+        an anchor for placing the dot, not a claim about where the language is spoken.
+        Equirectangular projection. Esperanto and Latin have no marker rather than an invented one.
+      </p>
     </section>
 
     <section id="companion-panel" class="companion-panel glass-surface hidden" aria-labelledby="companion-title">
@@ -648,6 +676,20 @@
           </span>
           <span class="hero-go" aria-hidden="true">→</span>
         </button>
+        <button class="hero-card" data-tool="map" style="--i:7">
+          <span class="hero-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none">
+              <circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="2.2"/>
+              <path class="hi-merid" d="M20 7c-4.5 4-4.5 22 0 26M20 7c4.5 4 4.5 22 0 26" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M7.5 20h25M9.5 13.5h21M9.5 26.5h21" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <span class="hero-card-text">
+            <strong>Language Map<span class="hero-tag">new</span></strong>
+            <small>Pick a language by its place on the globe.</small>
+          </span>
+          <span class="hero-go" aria-hidden="true">&rarr;</span>
+        </button>
         <button class="hero-card" data-tool="writing" style="--i:2">
           <span class="hero-icon" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none">
@@ -825,6 +867,7 @@
   <!-- After app.js: shares its global lexical scope for el/closeTools/etc. -->
   <script src="{{ url_for('static', filename='js/companion.js') }}"></script>
   <script src="{{ url_for('static', filename='js/practice.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/map.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/liquid-bg.js') }}"></script>
 </body>
 </html>

@@ -1594,6 +1594,7 @@ body.captions-listening .caption-panel {
 .companion-panel,
 .voice-mode-panel,
 .practice-panel,
+.map-panel,
 .camera-panel {
   position: fixed;
   z-index: 50;
@@ -3426,3 +3427,116 @@ body.modal-open .iris-fab {
 .admin-gate-form { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
 .admin-gate-form .companion-send { height: 42px; }
 .admin-gate-back { align-self: flex-start; margin-top: 6px; font-size: 12.5px; color: var(--muted); }
+
+/* A caption of the whole frame -- deliberately not positioned over the image,
+   because nothing in the pipeline knows where in the frame the text was. */
+.camera-translation.is-caption {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: auto;
+  max-height: 45%;
+  overflow-y: auto;
+}
+
+/* ─── Language Map ───────────────────────────────────────────────────────── */
+.map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--glass-edge, var(--seam));
+  border-radius: 26px;
+  background: var(--card);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  box-shadow: var(--shadow);
+  /* No animation here: the shared modal rule supplies modal-card-in, whose
+     keyframes carry the translate(-50%,-50%) that centres the panel. */
+}
+.map-panel { width: min(860px, calc(100vw - 28px)); }
+
+.map-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.map-head h2 { margin: 3px 0 0; font-size: 22px; letter-spacing: -0.03em; }
+
+.map-stage {
+  position: relative;
+  border: 1px solid var(--seam);
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 90% at 50% 12%, var(--accent-soft), transparent 70%),
+    var(--pane);
+  overflow: hidden;
+}
+#map-svg { display: block; width: 100%; height: auto; }
+
+/* The graticule: exact by construction, unlike a drawn coastline. */
+.grat { stroke: var(--seam); stroke-width: 1; opacity: 0.55; }
+.grat-equator, .grat-prime { stroke: var(--accent); opacity: 0.4; stroke-dasharray: 4 5; }
+
+.map-link {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 6;
+  opacity: 0.85;
+  animation: map-flow 1.4s linear infinite;
+}
+@keyframes map-flow { to { stroke-dashoffset: -22; } }
+
+#map-markers g {
+  cursor: pointer;
+  /* `backwards`, not `both`: with `both` the fill persists the `from` keyframe
+     whenever the animation does not actually run, and the markers' only route
+     to being visible is a completed animation -- so anything that suppresses
+     animations leaves an empty map. `backwards` still hides them during their
+     stagger delay, but the resting state is the element's own opacity of 1. */
+  opacity: 1;
+  animation: marker-in 0.5s var(--ease) backwards;
+}
+@keyframes marker-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.marker-dot { fill: var(--muted); transition: fill 0.25s, r 0.25s var(--iris-ease); }
+.marker-halo { fill: var(--accent); opacity: 0; transition: opacity 0.25s, r 0.3s var(--iris-ease); }
+
+#map-markers g:hover .marker-dot,
+#map-markers g:focus-visible .marker-dot { fill: var(--accent); }
+#map-markers g:hover .marker-halo,
+#map-markers g:focus-visible .marker-halo { opacity: 0.28; }
+
+/* Source and target stay lit so the pair is readable at a glance. */
+#map-markers g.is-target .marker-dot { fill: var(--accent); }
+#map-markers g.is-target .marker-halo { opacity: 0.4; animation: marker-pulse 2.2s ease-in-out infinite; }
+#map-markers g.is-source .marker-dot { fill: var(--ok); }
+#map-markers g.is-source .marker-halo { fill: var(--ok); opacity: 0.26; }
+
+@keyframes marker-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.12; }
+}
+
+.map-readout {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--seam);
+  border-radius: 100px;
+  padding: 4px 11px;
+  pointer-events: none;
+}
+
+.map-note { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  #map-markers g, .map-link, #map-markers g.is-target .marker-halo { animation: none; }
+  .marker-dot, .marker-halo { transition: none; }
+}

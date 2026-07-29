@@ -18,6 +18,7 @@ from .engine import (
     translate,
 )
 from .exceptions import DetectionError, ProviderError, ProviderUnavailableError, TranslationError
+from .geography import LANGUAGE_ANCHORS, anchors_for
 from .groq_client import WRITING_AUDIENCES, WRITING_MODES, WRITING_TONES
 from .languages import AUTO_DETECT, LANGUAGE_CODES, LANGUAGE_NAMES, LANGUAGES, is_supported, language_name
 from .result import PROVIDER_GROQ, PROVIDER_MYMEMORY, PROVIDER_NONE, TranslationResult
@@ -58,4 +59,6 @@ __all__ = [
     "scenario_options",
     "SCENARIOS",
     "LEVELS",
+    "LANGUAGE_ANCHORS",
+    "anchors_for",
 ]

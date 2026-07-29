@@ -36,6 +36,7 @@ from flask import (  # noqa: E402
 
 from translator import (  # noqa: E402
     AUTO_DETECT,
+    LANGUAGE_CODES,
     LANGUAGES,
     WRITING_AUDIENCES,
     WRITING_MODES,
@@ -44,6 +45,7 @@ from translator import (  # noqa: E402
     ProviderError,
     ProviderUnavailableError,
     active_provider,
+    anchors_for,
     chat,
     engine_label,
     is_supported,
@@ -296,7 +298,7 @@ _PROTECTED_PREFIXES = ("/api/translate", "/api/write", "/api/transcribe",
                        "/api/camera-translate", "/api/expression", "/api/chat",
                        "/api/practice", "/api/billing/checkout")
 # Open by design: the client needs these before it can possibly hold a token.
-_OPEN_PATHS = {"/api/config", "/api/practice/scenarios"}
+_OPEN_PATHS = {"/api/config", "/api/practice/scenarios", "/api/language-map"}
 
 # What an anonymous ("guest") token may reach. Mirrors what the browser shows
 # guests -- translation only -- but enforced where it cannot be edited away.
@@ -602,14 +604,20 @@ def api_admin_analytics() -> Response | tuple[Response, int]:
     if services is None:
         return jsonify({"error": "analytics storage is not configured"}), 503
     db = services[1]
-    profiles = [snapshot.to_dict() for snapshot in db.collection("users").limit(500).stream()]
+    # Both reads are capped. The counts derived from them are therefore counts
+    # of the SAMPLE, not of the collection, and are labelled as such below: a
+    # dashboard that shows "500 users" when there are 600 is not a rounding
+    # error, it is a wrong number presented as a fact.
+    PROFILE_LIMIT = 500
+    EVENT_LIMIT = 1000
+    profiles = [snapshot.to_dict() for snapshot in db.collection("users").limit(PROFILE_LIMIT).stream()]
     from firebase_admin import firestore
 
     events = [
         snapshot.to_dict()
         for snapshot in db.collection("usage_events")
         .order_by("created_at", direction=firestore.Query.DESCENDING)
-        .limit(1000)
+        .limit(EVENT_LIMIT)
         .stream()
     ]
     feature_counts: dict[str, int] = {}
@@ -626,13 +634,18 @@ def api_admin_analytics() -> Response | tuple[Response, int]:
             "users": profiles,
             "recent_events": events[:100],
             "metrics": {
-                "total_users": len(profiles),
+                "users_in_sample": len(profiles),
                 "registered_users": sum(not profile.get("anonymous", False) for profile in profiles),
                 "guest_users": sum(bool(profile.get("anonymous", False)) for profile in profiles),
-                "requests": len(events),
+                "requests_in_sample": len(events),
                 "errors": errors,
                 "average_speed_ms": round(total_duration / len(events)) if events else 0,
                 "feature_counts": feature_counts,
+                # True when the cap was hit, so the UI can say "500+ of" rather
+                # than quietly presenting a truncated read as a total.
+                "users_truncated": len(profiles) >= PROFILE_LIMIT,
+                "events_truncated": len(events) >= EVENT_LIMIT,
+                "sample_limits": {"users": PROFILE_LIMIT, "events": EVENT_LIMIT},
             },
         }
     )
@@ -901,6 +914,28 @@ def api_practice() -> Response | tuple[Response, int]:
 @app.route("/api/practice/scenarios")
 def api_practice_scenarios() -> Response:
     return jsonify({"scenarios": scenario_options()})
+
+
+@app.route("/api/language-map")
+def api_language_map() -> Response:
+    """Anchor points for the language map.
+
+    Open like /api/config: it is static reference data with no per-user
+    content and no provider cost, and the client needs it to draw the map
+    before anyone has signed in.
+
+    Each anchor is one representative city with that city's real coordinates.
+    It is a place to put a marker, not a claim about where a language is
+    spoken -- most of these are spoken across many countries. Languages with
+    no single sensible centre are absent rather than guessed.
+    """
+    return jsonify(
+        {
+            "anchors": anchors_for(LANGUAGE_CODES),
+            "projection": "equirectangular",
+            "note": "One representative city per language, not a distribution of speakers.",
+        }
+    )
 
 
 if __name__ == "__main__":
