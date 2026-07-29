@@ -55,6 +55,7 @@
     setTimeout(() => closeButton.focus(), 80);
   }
 
+  window.openPaymentPanel = openPayment;
   function closePayment() {
     panel.classList.remove("is-open");
     setTimeout(() => {
@@ -97,4 +98,14 @@
   } else if (params.get("payment") === "cancelled") {
     showToast("Payment cancelled. Nothing was charged.");
   }
+
+  window.addEventListener("rosetta:auth-ready", (event) => {
+    if (event.detail?.guest || sessionStorage.getItem("rosetta-upgrade-after-login") !== "1") return;
+    sessionStorage.removeItem("rosetta-upgrade-after-login");
+    setTimeout(() => {
+      panel.querySelector(".section-kicker").textContent = "WELCOME TO ROSETTA · MEET PRO";
+      document.getElementById("payment-title").innerHTML = "You’re in.<br><em>Go limitless.</em>";
+      openPayment();
+    }, 650);
+  });
 })();

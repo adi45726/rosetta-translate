@@ -315,10 +315,12 @@ form.addEventListener("submit", async (event) => {
   setBusy(true, signupMode ? "Creating account…" : "Signing in…");
   error.classList.add("hidden");
   try {
+    sessionStorage.setItem("rosetta-upgrade-after-login", "1");
     await setPersistence(auth, byId("auth-remember").checked ? browserLocalPersistence : browserSessionPersistence);
     if (signupMode) await createUserWithEmailAndPassword(auth, email.value.trim(), password.value);
     else await signInWithEmailAndPassword(auth, email.value.trim(), password.value);
   } catch (authError) {
+    sessionStorage.removeItem("rosetta-upgrade-after-login");
     showError(messageFor(authError));
     setBusy(false);
   }
@@ -345,7 +347,9 @@ googleButton.addEventListener("click", () => {
   error.classList.add("hidden");
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
+  sessionStorage.setItem("rosetta-upgrade-after-login", "1");
   signInWithPopup(auth, provider).catch((authError) => {
+    sessionStorage.removeItem("rosetta-upgrade-after-login");
     showError(messageFor(authError));
     setBusy(false);
   });

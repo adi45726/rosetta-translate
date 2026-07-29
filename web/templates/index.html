@@ -153,30 +153,38 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <button id="btn-upgrade" class="upgrade-pill" type="button">
-          <span aria-hidden="true">✦</span> Upgrade
-        </button>
-        <button id="auth-user-menu" class="auth-user-menu hidden" type="button" title="Account">
-          <span id="auth-user-avatar" class="auth-user-avatar">G</span>
-          <span id="auth-user-name">Guest</span>
-        </button>
-        <button id="auth-signout" class="signout-btn hidden" type="button" title="Sign out">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M10 5H6.5A2.5 2.5 0 0 0 4 7.5v9A2.5 2.5 0 0 0 6.5 19H10M14.5 8.5 18 12l-3.5 3.5M9 12h9"/>
-          </svg>
-          <span>Sign out</span>
-        </button>
-        <a id="admin-dashboard-link" class="studio-btn hidden" href="/admin">Admin</a>
-        <span id="engine-badge" class="engine-badge" data-provider="{{ provider }}" title="Active translation engine">
-          <span class="engine-dot" aria-hidden="true"></span>{{ engine }}
-        </span>
-        <button id="btn-tools" class="studio-btn liquid-btn" aria-expanded="false" aria-controls="tools-panel">
-          <span aria-hidden="true">✦</span> Tools
-        </button>
-        <button id="btn-install-app" class="studio-btn hidden" type="button">Install</button>
-        <button id="btn-history" class="icon-btn" title="Translation history" aria-label="Translation history" aria-expanded="false">&#8635;</button>
-        <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">&#9680;</button>
-        <a class="repo-link sk-wipe" data-arrow href="https://github.com/adi45726/rosetta-translate" target="_blank" rel="noopener">GitHub</a>
+        <div class="topbar-group topbar-primary">
+          <button id="btn-tools" class="studio-btn liquid-btn" aria-expanded="false" aria-controls="tools-panel">
+            <span aria-hidden="true">✦</span> Tools
+          </button>
+          <button id="btn-upgrade" class="upgrade-pill" type="button">
+            <span aria-hidden="true">✦</span> Upgrade
+          </button>
+        </div>
+        <div class="topbar-group topbar-utility">
+          <button id="btn-history" class="icon-btn" title="Translation history" aria-label="Translation history" aria-expanded="false">&#8635;</button>
+          <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">&#9680;</button>
+          <button id="btn-install-app" class="studio-btn hidden" type="button">Install</button>
+        </div>
+        <div class="topbar-group topbar-account">
+          <button id="auth-user-menu" class="auth-user-menu hidden" type="button" title="Account">
+            <span id="auth-user-avatar" class="auth-user-avatar">G</span>
+            <span id="auth-user-name">Guest</span>
+          </button>
+          <button id="auth-signout" class="signout-btn hidden" type="button" title="Sign out">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 5H6.5A2.5 2.5 0 0 0 4 7.5v9A2.5 2.5 0 0 0 6.5 19H10M14.5 8.5 18 12l-3.5 3.5M9 12h9"/>
+            </svg>
+            <span>Sign out</span>
+          </button>
+        </div>
+        <div class="topbar-group topbar-status">
+          <a id="admin-dashboard-link" class="studio-btn hidden" href="/admin">Admin</a>
+          <span id="engine-badge" class="engine-badge" data-provider="{{ provider }}" title="Active translation engine">
+            <span class="engine-dot" aria-hidden="true"></span>{{ engine }}
+          </span>
+          <a class="repo-link sk-wipe" data-arrow href="https://github.com/adi45726/rosetta-translate" target="_blank" rel="noopener">GitHub</a>
+        </div>
       </div>
     </header>
 

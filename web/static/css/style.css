@@ -228,7 +228,40 @@ h1 {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 46px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--seam) 78%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+}
+.topbar-primary { order: 1; }
+.topbar-utility { order: 2; }
+.topbar-account { order: 3; }
+.topbar-status {
+  order: 4;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.topbar-group .engine-badge,
+.topbar-group .repo-link { background: transparent; }
+.topbar-group .engine-badge { border-color: transparent; }
+
+@media (max-width: 920px) and (min-width: 701px) {
+  .topbar { align-items: flex-start; }
+  .topbar-actions { flex-wrap: wrap; }
+  .topbar-status { width: 100%; justify-content: flex-end; min-height: 30px; padding-block: 0; }
 }
 
 /* Which engine answered. The dot pulses while the engine is the preferred
@@ -1562,8 +1595,10 @@ body.captions-listening .caption-panel {
 @media (max-width: 460px) {
   .topbar { padding: 10px; }
   .topbar-actions { gap: 7px; }
+  .topbar-primary { flex: 1; }
+  .topbar-primary .studio-btn,
+  .topbar-primary .upgrade-pill { flex: 1; justify-content: center; }
   .card-intro h2 { font-size: 22px; }
-  .studio-btn { order: -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2759,9 +2794,20 @@ body.modal-open .iris-fab {
 
   .topbar-actions {
     margin-left: auto;
+    width: 100%;
+    flex: none;
+    justify-content: space-between;
     flex-wrap: nowrap;
     gap: 6px;
   }
+
+  .topbar-primary,
+  .topbar-account { min-height: 46px; }
+  .topbar-utility,
+  .topbar-status { display: none; }
+  .topbar-account { margin-left: auto; }
+  #auth-user-name { display: none; }
+  .auth-user-menu { padding-right: 5px; }
 
   .topbar .studio-btn,
   .topbar .icon-btn {
