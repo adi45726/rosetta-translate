@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Same directory as this file; sys.path already includes it on Vercel and
 # locally because Flask runs app.py as __main__ from web/.
 import admin_auth  # noqa: E402
+import user_auth  # noqa: E402
 from flask import (  # noqa: E402
     Flask,
     Response,
@@ -256,6 +257,46 @@ def _security_headers(response: Response) -> Response:
             # Analytics must never break translation if Firebase is unavailable.
             pass
     return response
+
+
+# Endpoints that spend Groq quota. Every one of these answered an anonymous
+# curl before this gate existed.
+_PROTECTED_PREFIXES = ("/api/translate", "/api/write", "/api/transcribe",
+                       "/api/camera-translate", "/api/expression", "/api/chat",
+                       "/api/practice")
+# Open by design: the client needs these before it can possibly hold a token.
+_OPEN_PATHS = {"/api/config", "/api/practice/scenarios"}
+
+
+def _requires_user(path: str) -> bool:
+    if path in _OPEN_PATHS or path.startswith("/api/admin/"):
+        return False
+    return any(path == p or path.startswith(p + "/") for p in _PROTECTED_PREFIXES)
+
+
+@app.before_request
+def _require_signed_in_user():
+    """Reject unauthenticated calls to the endpoints that cost money.
+
+    Invisible to real users: the page signs everyone in, guests included, and
+    attaches the ID token to every /api/ call. It is only felt by a request
+    that arrives without one -- which is exactly the traffic that was quietly
+    spending the Groq quota.
+
+    Fails open when FIREBASE_PROJECT_ID is unset, because a deployment with no
+    Firebase configured has no way to verify anyone and would otherwise be
+    bricked. That is the opposite of admin_auth, which fails closed: there the
+    risk is unauthorised access to data, here it is a broken app for everybody.
+    """
+    if app.config.get("TESTING") and app.config.get("SKIP_USER_AUTH", True):
+        return None
+    if not _requires_user(request.path) or not user_auth.is_enforceable():
+        return None
+    claims = user_auth.verify(user_auth.bearer_token(request.headers.get("Authorization", "")))
+    if claims is None:
+        return jsonify({"error": "sign in to use this feature"}), 401
+    g.user_claims = claims
+    return None
 
 
 @app.route("/")

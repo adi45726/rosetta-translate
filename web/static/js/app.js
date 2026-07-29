@@ -1573,4 +1573,17 @@ document.addEventListener("keydown", (evt) => {
 
 updateCharCount();
 renderHistory();
-if (sourceText.value.trim()) runTranslate();
+
+// A shared ?text= link translates on arrival -- but not until sign-in has
+// finished. auth.js is a module, so it installs its token-attaching fetch
+// wrapper only after this classic script has already run; firing here would
+// send an unauthenticated request straight into a 401. When there is no auth
+// gate on the page at all, there is nothing to wait for.
+function runDeepLinkTranslation() {
+  if (sourceText.value.trim()) runTranslate({ force: true });
+}
+if (document.getElementById("auth-gate")) {
+  window.addEventListener("rosetta:auth-ready", runDeepLinkTranslation, { once: true });
+} else {
+  runDeepLinkTranslation();
+}
