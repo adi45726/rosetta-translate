@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -77,6 +79,8 @@ def _load_dotenv() -> None:
 
 _load_dotenv()
 
+log = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 _firebase_admin_app = None
@@ -138,14 +142,37 @@ def _client_ip() -> str:
     return forwarded.split(",")[0].strip() or request.remote_addr or "unknown"
 
 
+def _clean_env(name: str) -> str:
+    """Read an env var, rejecting a value that is obviously a mis-paste.
+
+    Pasting into a dashboard field is easy to get wrong: a value that arrives
+    carrying newlines, or containing `OTHER_VAR=`, is a chunk of a .env file
+    rather than the single value asked for. That happened in production --
+    FIREBASE_API_KEY held the four lines that follow it in .env, so Firebase
+    was handed a nonsense key, failed to initialise, and every sign-in button
+    sat there doing nothing with no clue as to why.
+
+    Discarding such a value is deliberately better than forwarding it: an
+    empty field makes the client report "not configured", which is true and
+    actionable, where a corrupt one produces a silent, unexplained failure.
+    """
+    value = os.environ.get(name, "").strip().strip("'\"")
+    if not value:
+        return ""
+    if "\n" in value or "\r" in value or re.search(r"\b[A-Z][A-Z0-9_]{3,}=", value):
+        log.warning("%s looks like a pasted block rather than a value; ignoring it", name)
+        return ""
+    return value
+
+
 def _firebase_config() -> dict[str, str]:
     return {
-        "apiKey": os.environ.get("FIREBASE_API_KEY", ""),
-        "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
-        "projectId": os.environ.get("FIREBASE_PROJECT_ID", ""),
-        "storageBucket": os.environ.get("FIREBASE_STORAGE_BUCKET", ""),
-        "messagingSenderId": os.environ.get("FIREBASE_MESSAGING_SENDER_ID", ""),
-        "appId": os.environ.get("FIREBASE_APP_ID", ""),
+        "apiKey": _clean_env("FIREBASE_API_KEY"),
+        "authDomain": _clean_env("FIREBASE_AUTH_DOMAIN"),
+        "projectId": _clean_env("FIREBASE_PROJECT_ID"),
+        "storageBucket": _clean_env("FIREBASE_STORAGE_BUCKET"),
+        "messagingSenderId": _clean_env("FIREBASE_MESSAGING_SENDER_ID"),
+        "appId": _clean_env("FIREBASE_APP_ID"),
     }
 
 
