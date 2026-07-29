@@ -99,6 +99,70 @@
       </div>
     </section>
 
+    <section id="practice-panel" class="practice-panel glass-surface hidden" aria-labelledby="practice-title">
+      <div class="practice-head">
+        <div>
+          <span class="section-kicker">Practice Partner</span>
+          <h2 id="practice-title">Roleplay a real scene</h2>
+        </div>
+        <div class="practice-head-actions">
+          <button id="btn-practice-gloss" class="icon-btn" type="button" aria-pressed="true" title="Show English translations">EN</button>
+          <button id="btn-close-practice" class="icon-btn" aria-label="Close practice">×</button>
+        </div>
+      </div>
+
+      <div id="practice-setup" class="practice-setup">
+        <div class="setup-row">
+          <label class="field">
+            <span class="field-label">Language</span>
+            <select id="practice-lang" aria-label="Practice language"></select>
+          </label>
+          <label class="field">
+            <span class="field-label">Level</span>
+            <select id="practice-level" aria-label="Level">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </label>
+        </div>
+        <span class="field-label">Pick a scene</span>
+        <div id="scenario-grid" class="scenario-grid"></div>
+      </div>
+
+      <div id="practice-session" class="practice-session hidden">
+        <div class="practice-status">
+          <button id="btn-practice-back" class="back-tools" type="button">&larr; Change scene</button>
+          <div class="practice-score">
+            <svg class="score-ring" viewBox="0 0 44 44" aria-hidden="true">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="var(--seam)" stroke-width="4"/>
+              <circle id="score-arc" class="score-arc" cx="22" cy="22" r="18" fill="none"
+                      stroke="var(--ok)" stroke-width="4" stroke-linecap="round"
+                      stroke-dasharray="113" stroke-dashoffset="113"/>
+            </svg>
+            <div class="score-text">
+              <strong id="score-value">—</strong>
+              <small>avg</small>
+            </div>
+          </div>
+        </div>
+
+        <div id="practice-thread" class="practice-thread" role="log" aria-live="polite"></div>
+
+        <div id="practice-suggestion" class="practice-suggestion hidden">
+          <span class="suggest-label">try saying</span>
+          <button id="btn-suggestion" class="suggest-chip" type="button"></button>
+        </div>
+
+        <form id="practice-form" class="companion-form">
+          <input id="practice-input" class="companion-input" type="text" autocomplete="off"
+                 placeholder="Reply in the language…" maxlength="600" aria-label="Your reply">
+          <button id="btn-send-practice" class="companion-send liquid-btn" type="submit">Send</button>
+        </form>
+      </div>
+      <div id="practice-error" class="companion-error hidden" role="alert"></div>
+    </section>
+
     <section id="companion-panel" class="companion-panel glass-surface hidden" aria-labelledby="companion-title">
       <div class="companion-head">
         <div class="companion-identity">
@@ -418,6 +482,19 @@
           <span class="hero-go" aria-hidden="true">→</span>
         </button>
 
+        <button class="hero-card" data-tool="practice" style="--i:6">
+          <span class="hero-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 40" fill="none">
+              <path d="M8 12a3 3 0 013-3h7a4 4 0 014 4v17a3 3 0 00-3-3h-8a3 3 0 01-3-3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+              <path class="hi-page" d="M32 12a3 3 0 00-3-3h-7a4 4 0 00-4 4v17a3 3 0 013-3h8a3 3 0 003-3z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="hero-card-text">
+            <strong>Practice Partner<span class="hero-tag">new</span></strong>
+            <small>Roleplay a real scene and get corrected as you go.</small>
+          </span>
+          <span class="hero-go" aria-hidden="true">→</span>
+        </button>
         <button class="hero-card" data-tool="writing" style="--i:2">
           <span class="hero-icon" aria-hidden="true">
             <svg viewBox="0 0 40 40" fill="none">
@@ -591,6 +668,7 @@
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <!-- After app.js: shares its global lexical scope for el/closeTools/etc. -->
   <script src="{{ url_for('static', filename='js/companion.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/practice.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/liquid-bg.js') }}"></script>
 </body>
 </html>

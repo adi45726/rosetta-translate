@@ -29,9 +29,11 @@ from translator import (  # noqa: E402
     is_supported,
     language_name,
     max_text_length,
+    practice,
     read_expression,
     rewrite_text,
     scan_and_translate_image,
+    scenario_options,
     transcribe_audio,
     translate,
 )
@@ -371,6 +373,44 @@ def api_chat() -> Response | tuple[Response, int]:
         return jsonify({"error": str(exc)}), 503
     except ProviderError as exc:
         return jsonify({"error": str(exc)}), 502
+
+
+@app.route("/api/practice", methods=["POST"])
+def api_practice() -> Response | tuple[Response, int]:
+    """One turn of roleplay language practice."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "request body must be a JSON object"}), 400
+
+    message = data.get("message", "")
+    if not isinstance(message, str):
+        return jsonify({"error": "message must be a string"}), 400
+    language = data.get("language")
+    if not isinstance(language, str) or not is_supported(language):
+        return jsonify({"error": "a supported practice language is required"}), 400
+
+    if not app.config.get("TESTING", False) and _rate_limited(_client_ip()):
+        return jsonify({"error": "too many requests — slow down for a moment"}), 429
+
+    try:
+        return jsonify(
+            practice(
+                message,
+                language,
+                str(data.get("scenario", "cafe")),
+                str(data.get("level", "beginner")),
+                data.get("history"),
+            )
+        )
+    except ProviderUnavailableError as exc:
+        return jsonify({"error": str(exc)}), 503
+    except ProviderError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@app.route("/api/practice/scenarios")
+def api_practice_scenarios() -> Response:
+    return jsonify({"scenarios": scenario_options()})
 
 
 if __name__ == "__main__":

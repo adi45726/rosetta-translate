@@ -21,6 +21,7 @@ from .exceptions import DetectionError, ProviderError, ProviderUnavailableError,
 from .groq_client import WRITING_AUDIENCES, WRITING_MODES, WRITING_TONES
 from .languages import AUTO_DETECT, LANGUAGE_CODES, LANGUAGE_NAMES, LANGUAGES, is_supported, language_name
 from .result import PROVIDER_GROQ, PROVIDER_MYMEMORY, PROVIDER_NONE, TranslationResult
+from .tutor import LEVELS, SCENARIOS, practice, scenario_options
 
 __all__ = [
     "AUTO_DETECT",
@@ -53,4 +54,8 @@ __all__ = [
     "FEELINGS",
     "chat",
     "read_expression",
+    "practice",
+    "scenario_options",
+    "SCENARIOS",
+    "LEVELS",
 ]

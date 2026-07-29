@@ -1593,6 +1593,7 @@ body.captions-listening .caption-panel {
 .writing-panel,
 .companion-panel,
 .voice-mode-panel,
+.practice-panel,
 .camera-panel {
   position: fixed;
   z-index: 50;
@@ -3085,4 +3086,160 @@ body.modal-open .iris-fab {
 @media (prefers-reduced-motion: reduce) {
   .iris-face, .iris-eyes, .iris-ring { animation: none !important; }
   .iris-face *, .iris-ring, .bubble { transition: none !important; animation: none !important; }
+}
+
+/* ─── Practice Partner ───────────────────────────────────────────────────── */
+.practice-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--glass-edge, var(--seam));
+  border-radius: 26px;
+  background: var(--card);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  box-shadow: var(--shadow);
+  /* No animation here: the shared modal rule supplies modal-card-in, whose
+     keyframes carry the translate(-50%,-50%) that centres the panel. */
+}
+
+.practice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.practice-head h2 { margin: 3px 0 0; font-size: 22px; letter-spacing: -0.03em; }
+.practice-head-actions { display: flex; gap: 8px; }
+#btn-practice-gloss { font-family: var(--mono); font-size: 11px; }
+#btn-practice-gloss[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+.practice-setup { display: flex; flex-direction: column; gap: 12px; }
+.setup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+.scenario-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 10px;
+  border: 1px solid var(--seam);
+  border-radius: 16px;
+  background: var(--pane);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease), border-color 0.2s, background 0.2s;
+  animation: hero-card-in 0.5s var(--ease) both;
+  animation-delay: calc(var(--i) * 45ms);
+}
+.scenario-card:hover,
+.scenario-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.scenario-art {
+  font-size: 26px;
+  line-height: 1;
+  transition: transform 0.35s var(--iris-ease);
+}
+.scenario-card:hover .scenario-art { transform: scale(1.22) rotate(-6deg); }
+
+.practice-session { display: flex; flex-direction: column; gap: 12px; }
+.practice-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Running average, drawn as an arc so progress is visible without reading. */
+.practice-score { position: relative; width: 46px; height: 46px; flex: none; }
+.score-ring { width: 46px; height: 46px; transform: rotate(-90deg); }
+.score-arc { transition: stroke-dashoffset 0.8s var(--iris-ease), stroke 0.5s var(--ease); }
+.score-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  line-height: 1;
+}
+.score-text strong { font-size: 13px; font-family: var(--mono); }
+.score-text small { font-size: 8px; color: var(--faint); font-family: var(--mono); }
+
+.practice-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 240px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding: 4px 2px;
+  scroll-behavior: smooth;
+}
+.practice-row { display: flex; flex-direction: column; gap: 3px; max-width: 84%; }
+.practice-you { align-self: flex-end; align-items: flex-end; }
+.practice-partner { align-self: flex-start; }
+.practice-gloss {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  animation: gloss-in 0.4s var(--ease) both;
+}
+@keyframes gloss-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Corrections sit beside the conversation rather than interrupting it, so the
+   roleplay is never broken by the marking. */
+.correction-card {
+  align-self: stretch;
+  border-left: 3px solid var(--warn);
+  background: var(--pane);
+  border-radius: 0 12px 12px 0;
+  padding: 9px 13px;
+  animation: correction-in 0.5s var(--iris-ease) both;
+}
+@keyframes correction-in {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.correction-fixed { margin: 0; font-size: 13.5px; color: var(--ink); }
+.correction-fixed::before {
+  content: "✓ ";
+  color: var(--warn);
+  font-weight: 700;
+}
+.correction-why { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
+
+.practice-suggestion { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.suggest-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.suggest-chip {
+  background: var(--accent-soft);
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  border-radius: 100px;
+  padding: 6px 13px;
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, transform 0.18s;
+  animation: chip-in 0.35s var(--ease) both;
+}
+.suggest-chip:hover { background: var(--accent); color: var(--accent-ink); transform: translateY(-2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .scenario-card, .correction-card, .suggest-chip, .practice-gloss { animation: none; }
+  .scenario-card, .scenario-art, .score-arc { transition: none; }
+}
+
+@media (max-width: 620px) {
+  .setup-row { grid-template-columns: 1fr; }
+  .practice-row { max-width: 92%; }
 }

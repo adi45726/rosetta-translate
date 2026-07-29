@@ -157,6 +157,7 @@ function syncModalBackdrop() {
     || !cameraPanel.classList.contains("hidden")
     || !voiceModePanel.classList.contains("hidden")
     || !companionPanel.classList.contains("hidden")
+    || !practicePanel.classList.contains("hidden")
     || !toolsPanel.classList.contains("hidden");
   modalBackdrop.classList.toggle("hidden", !modalOpen);
   document.body.classList.toggle("modal-open", modalOpen);
@@ -187,6 +188,7 @@ modalBackdrop.addEventListener("click", () => {
   else if (!cameraPanel.classList.contains("hidden")) closeCamera();
   else if (!voiceModePanel.classList.contains("hidden")) closeVoiceMode();
   else if (!companionPanel.classList.contains("hidden")) closeCompanion();
+  else if (!practicePanel.classList.contains("hidden")) closePractice();
   else closeTools();
 });
 
@@ -1540,6 +1542,8 @@ document.addEventListener("keydown", (evt) => {
       closeVoiceMode();
     } else if (!companionPanel.classList.contains("hidden")) {
       closeCompanion();
+    } else if (!practicePanel.classList.contains("hidden")) {
+      closePractice();
     } else if (!toolsPanel.classList.contains("hidden")) {
       closeTools();
     } else if (!historyPanel.classList.contains("hidden")) {
