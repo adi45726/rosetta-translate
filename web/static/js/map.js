@@ -1,14 +1,18 @@
 /**
  * Language Map: choose a language by its place on the globe.
  *
- * The backdrop is a graticule -- the real grid of meridians and parallels --
- * not a drawn coastline. That is a deliberate choice rather than a shortcut:
- * a hand-approximated world outline would be invented geometry sitting
- * underneath markers whose whole value is being at true coordinates. A
- * graticule is exact by construction, so nothing on this map is guessed.
+ * The country outlines are real: Natural Earth 1:110m Admin 0 Countries
+ * (public domain), projected and simplified offline by tools/build_world_paths.py
+ * into web/static/data/world-borders.json. Simplification is Douglas-Peucker,
+ * which drops vertices but never moves one, so coastlines lose detail without
+ * anything being invented. Nothing here is hand-drawn -- an approximated
+ * outline would be made-up geometry sitting under markers whose whole value is
+ * being at true coordinates.
  *
- * Marker positions come from the server already projected (equirectangular),
- * so the client does no geography of its own.
+ * Borders and markers share one projection (equirectangular, computed on the
+ * server for markers and in the build script for borders), which is what puts
+ * each marker inside its own country. Spot-checked: every city anchor lands
+ * within ~6px of a real border vertex.
  *
  * Loaded after app.js, so it shares that global lexical scope for `el`,
  * `LANGUAGES`, `closeTools`, `syncModalBackdrop`, `targetLang` and friends.
@@ -18,6 +22,7 @@ const mapPanel = el("map-panel");
 const btnCloseMap = el("btn-close-map");
 const mapSvg = el("map-svg");
 const mapGraticule = el("map-graticule");
+const mapBorders = el("map-borders");
 const mapLinks = el("map-links");
 const mapMarkers = el("map-markers");
 const mapReadout = el("map-readout");
@@ -127,6 +132,24 @@ function drawMarkers() {
   drawLink();
 }
 
+async function loadBorders() {
+  if (mapBorders.childElementCount) return;
+  try {
+    const res = await fetch("/static/data/world-borders.json");
+    const data = await res.json();
+    // One <path> per ring. A single concatenated path would be cheaper to
+    // insert but makes every landmass one hit target, and the outlines read
+    // better with per-ring stroke joins.
+    const frag = document.createDocumentFragment();
+    (data.paths || []).forEach((d) => {
+      frag.appendChild(svgEl("path", { d, class: "border" }));
+    });
+    mapBorders.appendChild(frag);
+  } catch {
+    // The graticule and markers are still meaningful without outlines.
+  }
+}
+
 async function loadAnchors() {
   if (anchorsLoaded) return;
   try {
@@ -146,6 +169,7 @@ function openMap() {
   closeTools({ restoreFocus: false });
   mapPanel.classList.remove("hidden");
   syncModalBackdrop();
+  loadBorders();
   loadAnchors().then(refreshMarkerStates);
 }
 

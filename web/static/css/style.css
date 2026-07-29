@@ -3540,3 +3540,14 @@ body.modal-open .iris-fab {
   #map-markers g, .map-link, #map-markers g.is-target .marker-halo { animation: none; }
   .marker-dot, .marker-halo { transition: none; }
 }
+
+/* Real country outlines (Natural Earth 1:110m, public domain). Drawn under the
+   graticule so the coordinate grid stays readable over land. */
+.border {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 0.6;
+  stroke-opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
