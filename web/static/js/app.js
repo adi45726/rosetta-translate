@@ -24,6 +24,7 @@ const historyPanel = el("history-panel");
 const historyList = el("history-list");
 const btnClearHistory = el("btn-clear-history");
 const engineBadge = el("engine-badge");
+const btnInstallApp = el("btn-install-app");
 const arrowTemplate = el("arrow-template");
 const btnCaptions = el("btn-captions");
 const captionPanel = el("caption-panel");
@@ -95,6 +96,34 @@ const DEBOUNCE_MS = CONFIG.provider === "groq" ? 600 : 350;
 const MAX_STAGGERED_WORDS = 60;
 
 const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  btnInstallApp?.classList.remove("hidden");
+});
+
+btnInstallApp?.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  btnInstallApp.classList.add("hidden");
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  btnInstallApp?.classList.add("hidden");
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Installation is an enhancement; translation must still work without it.
+    });
+  });
+}
 
 // A restrained pointer-following highlight makes the glass feel dimensional
 // without tilting controls or moving the interface under the cursor.

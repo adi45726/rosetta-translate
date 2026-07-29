@@ -262,6 +262,7 @@ const voiceWave = el("voice-wave");
 let dictation = null;
 let dictating = false;
 let dictationFinal = "";
+let dictationFallbackActive = false;
 let orbStream = null;
 let orbContext = null;
 let orbFrame = null;
@@ -349,6 +350,29 @@ function stopDictation() {
   if (irisRecorder && irisRecorder.state === "recording") irisRecorder.stop();
 }
 
+async function switchToWhisperFallback() {
+  if (dictationFallbackActive || !dictating) return;
+  dictationFallbackActive = true;
+  voiceHeard.textContent = "Browser dictation unavailable — keep speaking…";
+  voiceHeard.classList.add("is-waiting");
+  setIrisStatus("switching to reliable voice mode");
+  try {
+    dictation?.abort();
+  } catch {
+    // The browser already closed its recognizer.
+  }
+  try {
+    await startWhisperDictation();
+    voiceHeard.textContent = "Reliable voice mode · tap the mic when finished";
+    setIrisStatus("listening in reliable mode");
+  } catch (error) {
+    showError(error?.name === "NotAllowedError"
+      ? "Microphone permission was denied."
+      : "The backup voice recorder could not start.");
+    stopDictation();
+  }
+}
+
 function startLiveDictation() {
   dictationFinal = "";
   dictation = new Recognizer();
@@ -372,14 +396,21 @@ function startLiveDictation() {
   });
 
   dictation.addEventListener("error", (event) => {
-    if (event.error === "not-allowed") showError("Microphone permission was denied.");
-    else if (event.error !== "aborted" && event.error !== "no-speech") {
-      showError(`Dictation stopped: ${event.error}.`);
+    if (event.error === "network") {
+      switchToWhisperFallback();
+      return;
     }
-    stopDictation();
+    if (event.error === "no-speech" || event.error === "aborted") return;
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      showError("Microphone permission was denied.");
+      stopDictation();
+      return;
+    }
+    switchToWhisperFallback();
   });
 
   dictation.addEventListener("end", () => {
+    if (dictationFallbackActive) return;
     if (!dictating) {
       finishDictation(dictationFinal);
       return;
@@ -406,16 +437,19 @@ async function startWhisperDictation() {
   }
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   irisChunks = [];
-  irisRecorder = new MediaRecorder(stream);
+  const preferredType = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"]
+    .find((type) => MediaRecorder.isTypeSupported(type));
+  irisRecorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType } : undefined);
   irisRecorder.addEventListener("dataavailable", (e) => {
     if (e.data.size) irisChunks.push(e.data);
   });
   irisRecorder.addEventListener("stop", async () => {
     stream.getTracks().forEach((t) => t.stop());
-    const blob = new Blob(irisChunks, { type: "audio/webm" });
+    const blob = new Blob(irisChunks, { type: irisRecorder.mimeType || "audio/webm" });
     if (!blob.size) return;
     const form = new FormData();
-    form.append("audio", blob, "speech.webm");
+    const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+    form.append("audio", blob, `speech.${extension}`);
     voiceHeard.textContent = "Transcribing…";
     irisStage.classList.add("is-transcribing");
     setIrisStatus("understanding your voice");
@@ -441,6 +475,7 @@ async function toggleDictation() {
   }
   companionError.classList.add("hidden");
   dictating = true;
+  dictationFallbackActive = false;
   voiceHeard.textContent = "Listening…";
   voiceHeard.classList.add("is-waiting");
   setVoiceBar(true);
@@ -689,3 +724,51 @@ if (!localStorage.getItem("rosetta-iris-seen")) {
 }
 
 setIrisFeeling("warm");
+
+// ─── Hero ───────────────────────────────────────────────────────────────────
+// Lives here rather than app.js because two of the six cards open panels this
+// file owns. Everything else is reached through functions app.js exports into
+// the shared global scope.
+const hero = el("hero");
+const translateCard = el("translate-card");
+const btnBackTools = el("btn-back-tools");
+
+function showTranslator() {
+  hero.classList.add("hidden");
+  translateCard.classList.remove("hidden");
+  // Re-run the entrance each time rather than only on first paint.
+  translateCard.classList.remove("reveal");
+  void translateCard.offsetWidth;
+  translateCard.classList.add("reveal");
+  sourceText.focus();
+}
+
+function showHero() {
+  translateCard.classList.add("hidden");
+  hero.classList.remove("hidden");
+  hero.classList.remove("reveal");
+  void hero.offsetWidth;
+  hero.classList.add("reveal");
+}
+
+const HERO_ACTIONS = {
+  translate: showTranslator,
+  companion: openCompanion,
+  writing: () => btnWriting.click(),
+  captions: () => btnCaptions.click(),
+  voice: () => btnToolVoice.click(),
+  camera: () => btnCamera.click(),
+};
+
+document.querySelectorAll(".hero-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    const action = HERO_ACTIONS[card.dataset.tool];
+    if (action) action();
+  });
+});
+
+btnBackTools.addEventListener("click", showHero);
+
+// A shared link that carries text should land straight in the translator
+// rather than making the visitor find it behind the hero.
+if (new URLSearchParams(location.search).get("text")) showTranslator();

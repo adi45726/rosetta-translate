@@ -158,6 +158,15 @@ def api_config() -> Response:
     )
 
 
+@app.route("/service-worker.js")
+def service_worker() -> Response:
+    """Serve the worker at the origin root so it can control the whole app."""
+    response = app.send_static_file("service-worker.js")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.route("/api/translate", methods=["POST"])
 def api_translate() -> Response | tuple[Response, int]:
     limit = max_text_length()
