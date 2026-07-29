@@ -306,3 +306,163 @@
 [debug] [2026-07-29T14:22:58.129Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default [none]
 [debug] [2026-07-29T14:22:58.130Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default {"release":{"name":"projects/rosetta-d35a0/releases/cloud.firestore/default","rulesetName":"projects/rosetta-d35a0/rulesets/01ddcb68-28ee-4a21-9ec6-3491780f91eb"}}
 [debug] [2026-07-29T14:22:59.586Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default 200
+[debug] [2026-07-29T20:26:24.938Z] ----------------------------------------------------------------------
+[debug] [2026-07-29T20:26:24.950Z] Command:       /opt/homebrew/Cellar/node/26.4.0/bin/node /opt/homebrew/bin/firebase firestore:databases:list --project rosetta-d35a0
+[debug] [2026-07-29T20:26:24.950Z] CLI Version:   15.22.3
+[debug] [2026-07-29T20:26:24.950Z] Platform:      darwin
+[debug] [2026-07-29T20:26:24.950Z] Node Version:  v26.4.0
+[debug] [2026-07-29T20:26:24.951Z] Detected Agent: codex_cli
+[debug] [2026-07-29T20:26:24.951Z] Time:          Thu Jul 30 2026 01:56:24 GMT+0530 (India Standard Time)
+[debug] [2026-07-29T20:26:24.951Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-29T20:26:26.765Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-29T20:26:26.767Z] > authorizing via signed-in user (chakrabartiaditya10@gmail.com)
+[debug] [2026-07-29T20:26:26.767Z] [iam] checking project rosetta-d35a0 for permissions ["datastore.databases.list","firebase.projects.get"]
+[debug] [2026-07-29T20:26:26.769Z] Checked if tokens are valid: false, expires at: 1785338205023
+[debug] [2026-07-29T20:26:26.769Z] Checked if tokens are valid: false, expires at: 1785338205023
+[debug] [2026-07-29T20:26:26.769Z] > refreshing access token with scopes: []
+[debug] [2026-07-29T20:26:26.774Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-07-29T20:26:26.775Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-29T20:26:27.410Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-07-29T20:26:27.411Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-29T20:26:27.423Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions [none]
+[debug] [2026-07-29T20:26:27.423Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions  x-goog-user-project=rosetta-d35a0
+[debug] [2026-07-29T20:26:27.424Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.databases.list","firebase.projects.get"]}
+[debug] [2026-07-29T20:26:28.851Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions 200
+[debug] [2026-07-29T20:26:28.851Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.databases.list","firebase.projects.get"]}
+[debug] [2026-07-29T20:26:28.851Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:28.851Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:28.851Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases [none]
+[debug] [2026-07-29T20:26:29.655Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases 200
+[debug] [2026-07-29T20:26:37.834Z] ----------------------------------------------------------------------
+[debug] [2026-07-29T20:26:37.837Z] Command:       /opt/homebrew/Cellar/node/26.4.0/bin/node /opt/homebrew/bin/firebase firestore:databases:get default --project rosetta-d35a0
+[debug] [2026-07-29T20:26:37.837Z] CLI Version:   15.22.3
+[debug] [2026-07-29T20:26:37.837Z] Platform:      darwin
+[debug] [2026-07-29T20:26:37.837Z] Node Version:  v26.4.0
+[debug] [2026-07-29T20:26:37.837Z] Detected Agent: codex_cli
+[debug] [2026-07-29T20:26:37.837Z] Time:          Thu Jul 30 2026 01:56:37 GMT+0530 (India Standard Time)
+[debug] [2026-07-29T20:26:37.837Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-29T20:26:38.917Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-29T20:26:38.918Z] > authorizing via signed-in user (chakrabartiaditya10@gmail.com)
+[debug] [2026-07-29T20:26:38.918Z] [iam] checking project rosetta-d35a0 for permissions ["datastore.databases.get","firebase.projects.get"]
+[debug] [2026-07-29T20:26:38.919Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:38.919Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:38.920Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions [none]
+[debug] [2026-07-29T20:26:38.920Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions  x-goog-user-project=rosetta-d35a0
+[debug] [2026-07-29T20:26:38.920Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.databases.get","firebase.projects.get"]}
+[debug] [2026-07-29T20:26:40.397Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions 200
+[debug] [2026-07-29T20:26:40.398Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.databases.get","firebase.projects.get"]}
+[debug] [2026-07-29T20:26:40.398Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:40.398Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:40.399Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases/default [none]
+[debug] [2026-07-29T20:26:40.829Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases/default 200
+[debug] [2026-07-29T20:26:53.113Z] ----------------------------------------------------------------------
+[debug] [2026-07-29T20:26:53.116Z] Command:       /opt/homebrew/Cellar/node/26.4.0/bin/node /opt/homebrew/bin/firebase deploy --only firestore:rules --project rosetta-d35a0
+[debug] [2026-07-29T20:26:53.116Z] CLI Version:   15.22.3
+[debug] [2026-07-29T20:26:53.116Z] Platform:      darwin
+[debug] [2026-07-29T20:26:53.116Z] Node Version:  v26.4.0
+[debug] [2026-07-29T20:26:53.116Z] Detected Agent: codex_cli
+[debug] [2026-07-29T20:26:53.116Z] Time:          Thu Jul 30 2026 01:56:53 GMT+0530 (India Standard Time)
+[debug] [2026-07-29T20:26:53.116Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-29T20:26:54.277Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-29T20:26:54.278Z] > authorizing via signed-in user (chakrabartiaditya10@gmail.com)
+[debug] [2026-07-29T20:26:54.278Z] [iam] checking project rosetta-d35a0 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-07-29T20:26:54.279Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:54.279Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:54.281Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions [none]
+[debug] [2026-07-29T20:26:54.281Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions  x-goog-user-project=rosetta-d35a0
+[debug] [2026-07-29T20:26:54.281Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-07-29T20:26:55.751Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions 200
+[debug] [2026-07-29T20:26:55.752Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'rosetta-d35a0'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-07-29T20:26:55.755Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:55.755Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:55.756Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases/default [none]
+[debug] [2026-07-29T20:26:56.152Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases/default 200
+[debug] [2026-07-29T20:26:56.152Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/rosetta-d35a0/databases/default {"name":"projects/rosetta-d35a0/databases/default","uid":"7e6f631d-b9db-4f73-b03c-b61c33c378a4","createTime":"2026-07-29T14:13:10.223429Z","updateTime":"2026-07-29T14:13:10.223429Z","locationId":"asia-south1","type":"FIRESTORE_NATIVE","concurrencyMode":"OPTIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-07-29T19:26:56.209024Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"ENTERPRISE","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","firestoreDataAccessMode":"DATA_ACCESS_MODE_ENABLED","mongodbCompatibleDataAccessMode":"DATA_ACCESS_MODE_DISABLED","etag":"IKyjz7bc+JUDMJrH9baZ+JUD"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-07-29T20:26:56.155Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:56.155Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:56.156Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0:test [none]
+[debug] [2026-07-29T20:26:56.156Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0:test [omitted]
+[debug] [2026-07-29T20:26:57.802Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0:test 200
+[debug] [2026-07-29T20:26:57.802Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0:test {}
+[info] ✔  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-07-29T20:26:57.804Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:57.804Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:57.804Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases pageSize=10&pageToken=
+[debug] [2026-07-29T20:26:59.278Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases 200
+[debug] [2026-07-29T20:26:59.279Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases {"releases":[{"name":"projects/rosetta-d35a0/releases/cloud.firestore/default","rulesetName":"projects/rosetta-d35a0/rulesets/01ddcb68-28ee-4a21-9ec6-3491780f91eb","createTime":"2026-07-29T14:13:15.415854Z","updateTime":"2026-07-29T14:22:59.586376Z"}]}
+[debug] [2026-07-29T20:26:59.281Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:59.283Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:26:59.287Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets/01ddcb68-28ee-4a21-9ec6-3491780f91eb [none]
+[debug] [2026-07-29T20:27:01.683Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets/01ddcb68-28ee-4a21-9ec6-3491780f91eb 200
+[debug] [2026-07-29T20:27:01.684Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets/01ddcb68-28ee-4a21-9ec6-3491780f91eb [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-07-29T20:27:01.686Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:01.687Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:01.687Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0 [none]
+[debug] [2026-07-29T20:27:03.220Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0 200
+[debug] [2026-07-29T20:27:03.220Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0 {"projectNumber":"625630291003","projectId":"rosetta-d35a0","lifecycleState":"ACTIVE","name":"Rosetta","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-07-29T14:08:53.991Z"}
+[debug] [2026-07-29T20:27:03.220Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:03.220Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:03.220Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets [none]
+[debug] [2026-07-29T20:27:03.220Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets [omitted]
+[debug] [2026-07-29T20:27:04.696Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets 200
+[debug] [2026-07-29T20:27:04.697Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/rulesets {"name":"projects/rosetta-d35a0/rulesets/1d1195b5-a8b4-4c52-be45-19e86ff0f32e","source":{"files":[{"content":"rules_version = '2';\n\n// Firestore security rules for Rosetta.\n//\n// Deploy with:  firebase deploy --only firestore:rules\n// Writing this file changes nothing until that runs -- whatever the project\n// was created with stays live otherwise.\n//\n// There is deliberately no admin rule here. The dashboard reads through the\n// Firebase Admin SDK, which bypasses these rules completely, so granting a\n// client-side read to some email address buys nothing and costs plenty: it\n// would mean anyone holding a token carrying that email claim could enumerate\n// every profile and every usage record. Admin access is a separate passphrase\n// (web/admin_auth.py) precisely so that no user account, however privileged,\n// is a way in.\nservice cloud.firestore {\n  match /databases/{database}/documents {\n\n    function signedIn() {\n      return request.auth != null;\n    }\n\n    // A profile belongs to exactly one uid and is reachable only by them.\n    match /users/{userId} {\n      allow read: if signedIn() && request.auth.uid == userId;\n\n      // The uid field must agree with both the document id and the caller, so\n      // a profile cannot be written that claims to belong to someone else.\n      // Sizes are capped because these fields are rendered back into the page.\n      allow create, update: if signedIn()\n        && request.auth.uid == userId\n        && request.resource.data.uid == userId\n        && request.resource.data.keys().hasOnly([\n          \"uid\", \"email\", \"anonymous\", \"first_name\", \"last_name\",\n          \"role\", \"purpose\", \"created_at\", \"last_seen_at\"\n        ])\n        && request.resource.data.first_name is string\n        && request.resource.data.first_name.size() <= 100\n        && request.resource.data.last_name is string\n        && request.resource.data.last_name.size() <= 100;\n\n      // Deletion belongs on the server, where related data can be cleaned up.\n      allow delete: if false;\n    }\n\n    // Append-only telemetry: a client may record an event about itself and may\n    // never read, edit or remove one. Usage history is not something one user\n    // should be able to enumerate, or another to rewrite.\n    match /usage_events/{eventId} {\n      allow read: if false;\n      allow update, delete: if false;\n      allow create: if signedIn()\n        && request.resource.data.uid == request.auth.uid\n        && request.resource.data.keys().hasOnly([\n          \"uid\", \"feature\", \"method\", \"status\", \"duration_ms\", \"anonymous\", \"created_at\"\n        ])\n        && request.resource.data.feature is string\n        && request.resource.data.feature.size() <= 64;\n    }\n\n    // Anything not named above is closed. New collections opt in here rather\n    // than inherit access by accident.\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}\n","name":"firestore.rules"}]},"createTime":"2026-07-29T20:27:04.605375Z","metadata":{"services":["cloud.firestore"]},"attachmentPoint":"firestore.googleapis.com/projects/625630291003/databases/default"}
+[debug] [2026-07-29T20:27:04.697Z] [rules] created ruleset projects/rosetta-d35a0/rulesets/1d1195b5-a8b4-4c52-be45-19e86ff0f32e
+[debug] [2026-07-29T20:27:04.699Z] [rules] releasing cloud.firestore/default with ruleset projects/rosetta-d35a0/rulesets/1d1195b5-a8b4-4c52-be45-19e86ff0f32e
+[debug] [2026-07-29T20:27:04.700Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:04.700Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:27:04.701Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default [none]
+[debug] [2026-07-29T20:27:04.701Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default {"release":{"name":"projects/rosetta-d35a0/releases/cloud.firestore/default","rulesetName":"projects/rosetta-d35a0/rulesets/1d1195b5-a8b4-4c52-be45-19e86ff0f32e"}}
+[debug] [2026-07-29T20:27:06.397Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/rosetta-d35a0/releases/cloud.firestore/default 200
+[debug] [2026-07-29T20:29:26.278Z] ----------------------------------------------------------------------
+[debug] [2026-07-29T20:29:26.288Z] Command:       /opt/homebrew/Cellar/node/26.4.0/bin/node /opt/homebrew/bin/firebase apps:list --project rosetta-d35a0
+[debug] [2026-07-29T20:29:26.288Z] CLI Version:   15.22.3
+[debug] [2026-07-29T20:29:26.288Z] Platform:      darwin
+[debug] [2026-07-29T20:29:26.288Z] Node Version:  v26.4.0
+[debug] [2026-07-29T20:29:26.288Z] Detected Agent: codex_cli
+[debug] [2026-07-29T20:29:26.288Z] Time:          Thu Jul 30 2026 01:59:26 GMT+0530 (India Standard Time)
+[debug] [2026-07-29T20:29:26.288Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-29T20:29:26.494Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-29T20:29:26.495Z] > authorizing via signed-in user (chakrabartiaditya10@gmail.com)
+[debug] [2026-07-29T20:29:26.498Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:26.498Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:26.502Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/rosetta-d35a0:searchApps pageSize=100
+[debug] [2026-07-29T20:29:27.772Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/rosetta-d35a0:searchApps 200
+[debug] [2026-07-29T20:29:28.596Z] ----------------------------------------------------------------------
+[debug] [2026-07-29T20:29:28.602Z] Command:       /opt/homebrew/Cellar/node/26.4.0/bin/node /opt/homebrew/bin/firebase auth:export /tmp/rosetta-auth-users.json --project rosetta-d35a0 --format=json
+[debug] [2026-07-29T20:29:28.602Z] CLI Version:   15.22.3
+[debug] [2026-07-29T20:29:28.602Z] Platform:      darwin
+[debug] [2026-07-29T20:29:28.602Z] Node Version:  v26.4.0
+[debug] [2026-07-29T20:29:28.602Z] Detected Agent: codex_cli
+[debug] [2026-07-29T20:29:28.602Z] Time:          Thu Jul 30 2026 01:59:28 GMT+0530 (India Standard Time)
+[debug] [2026-07-29T20:29:28.603Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-29T20:29:29.289Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-29T20:29:29.296Z] > authorizing via signed-in user (chakrabartiaditya10@gmail.com)
+[debug] [2026-07-29T20:29:29.297Z] [iam] checking project rosetta-d35a0 for permissions ["firebase.projects.get","firebaseauth.users.get"]
+[debug] [2026-07-29T20:29:29.300Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:29.301Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:29.310Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions [none]
+[debug] [2026-07-29T20:29:29.311Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions  x-goog-user-project=rosetta-d35a0
+[debug] [2026-07-29T20:29:29.311Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["firebase.projects.get","firebaseauth.users.get"]}
+[debug] [2026-07-29T20:29:31.465Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions 200
+[debug] [2026-07-29T20:29:31.467Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/rosetta-d35a0:testIamPermissions {"permissions":["firebase.projects.get","firebaseauth.users.get"]}
+[info] Exporting accounts to /tmp/rosetta-auth-users.json
+[debug] [2026-07-29T20:29:31.471Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:31.471Z] Checked if tokens are valid: true, expires at: 1785360386411
+[debug] [2026-07-29T20:29:31.472Z] >>> [apiv2][query] POST https://www.googleapis.com/identitytoolkit/v3/relyingparty/downloadAccount [none]
+[debug] [2026-07-29T20:29:31.472Z] >>> [apiv2][body] POST https://www.googleapis.com/identitytoolkit/v3/relyingparty/downloadAccount {"targetProjectId":"rosetta-d35a0","maxResults":1000}
+[debug] [2026-07-29T20:29:32.043Z] <<< [apiv2][status] POST https://www.googleapis.com/identitytoolkit/v3/relyingparty/downloadAccount 200
+[debug] [2026-07-29T20:29:32.043Z] <<< [apiv2][body] POST https://www.googleapis.com/identitytoolkit/v3/relyingparty/downloadAccount [omitted]
+[info] ✔  Exported 6 account(s) successfully. 

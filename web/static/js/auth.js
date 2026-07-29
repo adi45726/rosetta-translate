@@ -45,7 +45,7 @@ const config = JSON.parse(byId("firebase-config-data").textContent);
 const configured = Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
 const restrictedForGuests = new Set([
   "btn-writing", "btn-camera", "btn-tool-voice", "btn-companion",
-  "iris-fab", "btn-practice", "btn-captions"
+  "iris-fab", "btn-practice", "btn-captions", "btn-upgrade"
 ]);
 let signupMode = false;
 let auth = null;
@@ -102,12 +102,20 @@ function messageFor(errorObject) {
   if (code.includes("popup-blocked")) return "Allow popups for Rosetta, then try Google sign-in again.";
   if (code.includes("unauthorized-domain")) return "Add this domain to Firebase Authentication → Authorized domains.";
   if (code.includes("network-request-failed")) return "Check your connection and try again.";
+  if (code.includes("operation-not-allowed")) return "Google sign-in is not enabled for this Firebase project.";
+  if (code.includes("internal-error")) return "Firebase could not complete Google sign-in. Please try once more.";
   // Strips the trailing " (auth/invalid-credential)." Firebase appends.
   // The backslashes here must be single: `\\(` matches a literal backslash and
   // then opens a group that is never closed, which is an early SyntaxError --
   // and because it is thrown at parse time, the entire module fails to
   // evaluate and not one listener in this file gets attached.
-  return errorObject?.message?.replace(/^Firebase: /, "").replace(/\s*\(auth\/[^)]+\)\.?$/, "") || "Something went wrong. Please try again.";
+  const message = errorObject?.message
+    ?.replace(/^Firebase: /, "")
+    .replace(/\s*\(auth\/[^)]+\)\.?$/, "");
+  if (message && message !== "Error") return message;
+  return code
+    ? `Google sign-in failed (${code}).`
+    : "Google sign-in could not start. Check that popups are allowed, then try again.";
 }
 
 function showError(text, good = false) {
@@ -147,6 +155,17 @@ function revealApp(profile, isAdmin = false) {
   window.dispatchEvent(new CustomEvent("rosetta:auth-ready", { detail: profile }));
 }
 
+function revealAuthenticatedUser(user) {
+  const fallbackName = (user.displayName || "").trim()
+    || (user.email || "").split("@")[0]
+    || "Member";
+  revealApp({
+    name: fallbackName,
+    email: user.email || "",
+    guest: user.isAnonymous
+  });
+}
+
 function openOnboarding(user) {
   gate.classList.add("hidden");
   onboardingGate.classList.remove("hidden");
@@ -166,6 +185,22 @@ function showGate() {
   adminLink?.classList.add("hidden");
 }
 
+async function leaveGuestAndShowGate() {
+  // Anonymous Firebase users are still authenticated users. Starting Google
+  // redirect auth on top of that guest session can return to guest mode or
+  // fail with an account-linking error. Guest mode stores no irreplaceable
+  // account data, so end it before presenting the real sign-in choices.
+  if (auth?.currentUser?.isAnonymous) {
+    try {
+      await signOut(auth);
+    } catch {
+      // The sign-in screen is still the useful recovery path if the guest
+      // token has already expired or cannot be revoked locally.
+    }
+  }
+  showGate();
+}
+
 function guestNotice() {
   let toast = byId("guest-limit-toast");
   if (!toast) {
@@ -174,7 +209,7 @@ function guestNotice() {
     toast.className = "guest-limit-toast";
     toast.innerHTML = "<b>Member feature</b><span>Sign in free to unlock voice, camera, captions, Iris and writing tools.</span><button type=\"button\">Sign in</button>";
     document.body.appendChild(toast);
-    toast.querySelector("button").addEventListener("click", showGate);
+    toast.querySelector("button").addEventListener("click", leaveGuestAndShowGate);
   }
   toast.classList.add("is-visible");
   clearTimeout(guestNotice.timer);
@@ -289,17 +324,31 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-googleButton.addEventListener("click", async () => {
+googleButton.addEventListener("click", () => {
   if (!auth) return showError("Firebase is not connected yet. Use guest preview for now.");
+  // A popup must be opened synchronously from this click. Any `await` before
+  // signInWithPopup consumes the browser's transient user activation and the
+  // popup is then blocked (some Firebase/browser combinations report only
+  // the unhelpful message "Error").
+  if (auth.currentUser?.isAnonymous) {
+    setBusy(true, "Closing guest session…");
+    signOut(auth).then(() => {
+      setBusy(false);
+      showError("Guest session closed. Click Continue with Google once more.", true);
+    }).catch((authError) => {
+      showError(messageFor(authError));
+      setBusy(false);
+    });
+    return;
+  }
   setBusy(true, "Opening Google…");
   error.classList.add("hidden");
-  try {
-    await setPersistence(auth, byId("auth-remember").checked ? browserLocalPersistence : browserSessionPersistence);
-    await signInWithPopup(auth, new GoogleAuthProvider());
-  } catch (authError) {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  signInWithPopup(auth, provider).catch((authError) => {
     showError(messageFor(authError));
     setBusy(false);
-  }
+  });
 });
 
 byId("auth-forgot").addEventListener("click", async () => {
@@ -322,13 +371,28 @@ signoutButton.addEventListener("click", async () => {
   showGate();
 });
 userMenu.addEventListener("click", () => {
-  if (document.body.dataset.access === "guest") showGate();
+  if (document.body.dataset.access === "guest") leaveGuestAndShowGate();
 });
 
 if (configured) {
   const firebaseApp = initializeApp(config);
   auth = getAuth(firebaseApp);
-  db = getFirestore(firebaseApp, "default");
+  // Configure persistence outside the Google button's click handler so it
+  // cannot delay popup creation. Firebase defaults to local persistence; this
+  // keeps the checkbox preference in sync before the next authentication.
+  const rememberControl = byId("auth-remember");
+  rememberControl.addEventListener("change", () => {
+    setPersistence(
+      auth,
+      rememberControl.checked ? browserLocalPersistence : browserSessionPersistence
+    ).catch((persistenceError) => showError(messageFor(persistenceError)));
+  });
+  // Production may use a named Firestore database. Keep the browser on the
+  // same database as the Flask/Firebase Admin backend; omit the argument only
+  // when no custom id is configured, which selects Firebase's `(default)`.
+  db = config.databaseId
+    ? getFirestore(firebaseApp, config.databaseId)
+    : getFirestore(firebaseApp);
   onAuthStateChanged(auth, (user) => {
     setBusy(false);
     if (user) {
@@ -343,8 +407,11 @@ if (configured) {
           guest: user.isAnonymous
         }, data.is_admin);
       }).catch((profileError) => {
-        showError(profileError.message);
-        showGate();
+        // Authentication and optional profile storage are separate concerns.
+        // A valid Google user must not be thrown back to sign-in just because
+        // Firestore is unavailable or its rules are being deployed.
+        console.warn("Profile storage unavailable; continuing with Firebase Auth.", profileError);
+        revealAuthenticatedUser(user);
       });
     } else {
       document.body.classList.remove("auth-pending");

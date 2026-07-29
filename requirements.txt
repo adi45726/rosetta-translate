@@ -4,3 +4,4 @@ langdetect>=1.0.9
 pytest>=8.0
 firebase-admin>=6.5
 google-auth>=2.28
+stripe>=15.3

@@ -27,5 +27,9 @@ def isolated_env(monkeypatch):
         "FIREBASE_PROJECT_ID",
         "ADMIN_PASSWORD_HASH",
         "SECRET_KEY",
+        "STRIPE_RESTRICTED_KEY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "APP_BASE_URL",
     ):
         monkeypatch.delenv(name, raising=False)

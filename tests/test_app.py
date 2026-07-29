@@ -1,4 +1,6 @@
+import sys
 from io import BytesIO
+from types import SimpleNamespace
 
 import app as web_app
 import pytest
@@ -21,16 +23,61 @@ def test_index_ok(client):
     assert b"Rosetta" in resp.data
     assert b'id="auth-gate"' in resp.data
     assert b'id="auth-google"' in resp.data
+    assert b'id="payment-panel"' in resp.data
+
+
+def test_billing_market_is_localized_from_edge_country(client):
+    india = client.get("/api/billing/market", headers={"X-Vercel-IP-Country": "IN"}).get_json()
+    assert india["currency"] == "inr"
+    assert india["price"] == "₹799"
+    assert "UPI" in india["methods"]
+
+    uk = client.get("/api/billing/market", headers={"X-Vercel-IP-Country": "GB"}).get_json()
+    assert uk["currency"] == "gbp"
+    assert "Apple Pay" in uk["methods"]
+
+
+def test_checkout_requires_server_payment_key(client):
+    response = client.post("/api/billing/checkout")
+    assert response.status_code == 503
+    assert "not configured" in response.get_json()["error"]
+
+
+def test_checkout_uses_dynamic_payment_methods(client, monkeypatch):
+    captured = {}
+
+    class FakeSessions:
+        def create(self, payload):
+            captured.update(payload)
+            return SimpleNamespace(url="https://checkout.stripe.test/session")
+
+    class FakeStripeClient:
+        def __init__(self, key, stripe_version=None):
+            assert key == "rk_test"
+            assert stripe_version == "2026-06-24.dahlia"
+            self.v1 = SimpleNamespace(checkout=SimpleNamespace(sessions=FakeSessions()))
+
+    monkeypatch.setenv("STRIPE_RESTRICTED_KEY", "rk_test")
+    monkeypatch.setitem(sys.modules, "stripe", SimpleNamespace(StripeClient=FakeStripeClient))
+    response = client.post("/api/billing/checkout?country=IN")
+
+    assert response.status_code == 200
+    assert response.get_json()["url"] == "https://checkout.stripe.test/session"
+    assert "payment_method_types" not in captured
+    assert captured["line_items"][0]["price_data"]["currency"] == "inr"
+    assert captured["integration_identifier"].startswith("rosetta_web_")
 
 
 def test_index_includes_public_firebase_config(client, monkeypatch):
     monkeypatch.setenv("FIREBASE_API_KEY", "public-web-key")
     monkeypatch.setenv("FIREBASE_AUTH_DOMAIN", "rosetta.firebaseapp.com")
     monkeypatch.setenv("FIREBASE_PROJECT_ID", "rosetta")
+    monkeypatch.setenv("FIREBASE_DATABASE_ID", "customer-data")
     monkeypatch.setenv("FIREBASE_APP_ID", "web-app-id")
     response = client.get("/")
     assert b"public-web-key" in response.data
     assert b"rosetta.firebaseapp.com" in response.data
+    assert b"customer-data" in response.data
 
 
 def test_admin_dashboard_is_not_reachable_without_its_own_passphrase(client):

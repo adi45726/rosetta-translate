@@ -158,6 +158,7 @@ function syncModalBackdrop() {
     || !voiceModePanel.classList.contains("hidden")
     || !companionPanel.classList.contains("hidden")
     || !practicePanel.classList.contains("hidden")
+    || !el("payment-panel")?.classList.contains("hidden")
     || !toolsPanel.classList.contains("hidden");
   modalBackdrop.classList.toggle("hidden", !modalOpen);
   document.body.classList.toggle("modal-open", modalOpen);
@@ -183,7 +184,8 @@ btnTools.addEventListener("click", () => {
 });
 btnCloseTools.addEventListener("click", () => closeTools());
 modalBackdrop.addEventListener("click", () => {
-  if (!writingPanel.classList.contains("hidden")) closeWriting();
+  if (!el("payment-panel")?.classList.contains("hidden")) window.closePaymentPanel?.();
+  else if (!writingPanel.classList.contains("hidden")) closeWriting();
   else if (!captionPanel.classList.contains("hidden")) closeCaptions();
   else if (!cameraPanel.classList.contains("hidden")) closeCamera();
   else if (!voiceModePanel.classList.contains("hidden")) closeVoiceMode();
@@ -1532,7 +1534,9 @@ document.addEventListener("keydown", (evt) => {
   }
 
   if (evt.key === "Escape") {
-    if (!captionPanel.classList.contains("hidden")) {
+    if (!el("payment-panel")?.classList.contains("hidden")) {
+      window.closePaymentPanel?.();
+    } else if (!captionPanel.classList.contains("hidden")) {
       closeCaptions();
     } else if (!writingPanel.classList.contains("hidden")) {
       closeWriting();

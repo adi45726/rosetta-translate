@@ -6,7 +6,9 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
+import string
 import sys
 import threading
 import time
@@ -171,6 +173,7 @@ def _firebase_config() -> dict[str, str]:
         "apiKey": _clean_env("FIREBASE_API_KEY"),
         "authDomain": _clean_env("FIREBASE_AUTH_DOMAIN"),
         "projectId": _clean_env("FIREBASE_PROJECT_ID"),
+        "databaseId": _clean_env("FIREBASE_DATABASE_ID"),
         "storageBucket": _clean_env("FIREBASE_STORAGE_BUCKET"),
         "messagingSenderId": _clean_env("FIREBASE_MESSAGING_SENDER_ID"),
         "appId": _clean_env("FIREBASE_APP_ID"),
@@ -226,7 +229,11 @@ def reset_state() -> None:
 @app.after_request
 def _security_headers(response: Response) -> Response:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    # Not 'no-referrer': Google's OAuth endpoints validate the originating
+    # origin, and stripping the header entirely made "Continue with Google"
+    # fail with an unhelpful generic error. strict-origin-when-cross-origin
+    # sends the origin but never the path, which is the privacy that mattered.
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("X-Frame-Options", "DENY")
     # Locked to the hosts this app genuinely talks to. 'unsafe-inline' is
     # present because the page carries inline <script> and style attributes
@@ -234,19 +241,30 @@ def _security_headers(response: Response) -> Response:
     # a bigger change than this pass. Even so, connect-src is the valuable
     # half: model output is rendered as textContent, but if a future change
     # ever injects markup, this stops it phoning anywhere but Google/Firebase.
+    #
+    # The Google hosts below are not optional decoration. Firebase's OAuth flow
+    # loads the gapi client from apis.google.com and puts the account chooser on
+    # accounts.google.com; omitting either makes signInWithPopup fail with a
+    # message browsers surface as a bare "Error", which is exactly what the
+    # first version of this header caused.
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self' https://www.gstatic.com 'unsafe-inline'; "
+        "script-src 'self' https://www.gstatic.com https://apis.google.com "
+        "https://*.firebaseapp.com 'unsafe-inline'; "
         "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob:; "
+        "img-src 'self' data: blob: https://*.googleusercontent.com; "
         "media-src 'self' blob:; "
         "font-src 'self'; "
         "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com "
         "https://securetoken.googleapis.com https://identitytoolkit.googleapis.com "
-        "https://firestore.googleapis.com https://www.gstatic.com; "
-        "frame-src https://*.firebaseapp.com; "
-        "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "https://firestore.googleapis.com https://www.gstatic.com "
+        "https://apis.google.com https://accounts.google.com "
+        "https://api.stripe.com; "
+        "frame-src https://*.firebaseapp.com https://accounts.google.com "
+        "https://apis.google.com https://js.stripe.com https://hooks.stripe.com; "
+        "base-uri 'self'; form-action 'self' https://checkout.stripe.com; "
+        "frame-ancestors 'none'",
     )
     if request.path.startswith("/api/") and request.path not in {"/api/config", "/api/profile", "/api/admin/analytics"}:
         try:
@@ -276,7 +294,7 @@ def _security_headers(response: Response) -> Response:
 # curl before this gate existed.
 _PROTECTED_PREFIXES = ("/api/translate", "/api/write", "/api/transcribe",
                        "/api/camera-translate", "/api/expression", "/api/chat",
-                       "/api/practice")
+                       "/api/practice", "/api/billing/checkout")
 # Open by design: the client needs these before it can possibly hold a token.
 _OPEN_PATHS = {"/api/config", "/api/practice/scenarios"}
 
@@ -345,6 +363,125 @@ def index() -> str:
         provider=active_provider(),
         firebase_config=_firebase_config(),
     )
+
+
+_BILLING_MARKETS = {
+    "IN": {"currency": "inr", "amount": 79900, "price": "₹799", "methods": ["UPI", "Cards"]},
+    "GB": {"currency": "gbp", "amount": 900, "price": "£9", "methods": ["Apple Pay", "Cards"]},
+    "US": {"currency": "usd", "amount": 1200, "price": "$12", "methods": ["Apple Pay", "Google Pay", "Cards"]},
+}
+_DEFAULT_BILLING_MARKET = {
+    "currency": "usd", "amount": 1200, "price": "$12", "methods": ["Cards", "Local methods"]
+}
+
+
+def _billing_country() -> str:
+    """Use a trusted edge country header, falling back to a validated hint."""
+    edge_country = (
+        request.headers.get("X-Vercel-IP-Country")
+        or request.headers.get("CF-IPCountry")
+        or ""
+    ).upper()
+    if re.fullmatch(r"[A-Z]{2}", edge_country):
+        return edge_country
+    hinted = request.args.get("country", "").upper()
+    return hinted if re.fullmatch(r"[A-Z]{2}", hinted) else "US"
+
+
+@app.route("/api/billing/market")
+def api_billing_market() -> Response:
+    country = _billing_country()
+    market = _BILLING_MARKETS.get(country, _DEFAULT_BILLING_MARKET)
+    return jsonify({"country": country, **market})
+
+
+@app.route("/api/billing/checkout", methods=["POST"])
+def api_billing_checkout() -> Response | tuple[Response, int]:
+    """Create a server-side Checkout Session with Stripe dynamic methods."""
+    api_key = _clean_env("STRIPE_RESTRICTED_KEY") or _clean_env("STRIPE_SECRET_KEY")
+    if not api_key:
+        return jsonify({"error": "Payments are not configured yet."}), 503
+
+    try:
+        import stripe
+    except ImportError:
+        return jsonify({"error": "The payment service is unavailable."}), 503
+
+    country = _billing_country()
+    market = _BILLING_MARKETS.get(country, _DEFAULT_BILLING_MARKET)
+    claims = getattr(g, "user_claims", None) or _current_user() or {}
+    uid = str(claims.get("uid", ""))
+    origin = _clean_env("APP_BASE_URL").rstrip("/") or request.host_url.rstrip("/")
+    integration_id = "rosetta_web_" + "".join(random.choices(string.ascii_lowercase, k=8))
+
+    try:
+        client = stripe.StripeClient(api_key, stripe_version="2026-06-24.dahlia")
+        session = client.v1.checkout.sessions.create(
+            {
+                "mode": "payment",
+                "integration_identifier": integration_id,
+                "line_items": [
+                    {
+                        "price_data": {
+                            "currency": market["currency"],
+                            "unit_amount": market["amount"],
+                            "product_data": {
+                                "name": "Rosetta Pro Pass",
+                                "description": "Unlimited translation workspace and every Rosetta tool.",
+                            },
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                # Deliberately omit payment_method_types. Stripe dynamically
+                # presents eligible wallets and local methods for this market.
+                "success_url": f"{origin}/?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
+                "cancel_url": f"{origin}/?payment=cancelled",
+                "customer_email": claims.get("email") or None,
+                "client_reference_id": uid or None,
+                "metadata": {"firebase_uid": uid, "product": "pro_pass"},
+                "billing_address_collection": "auto",
+            }
+        )
+    except Exception as exc:
+        log.exception("Stripe Checkout session creation failed")
+        message = getattr(exc, "user_message", None) or "Checkout could not be started. Please try again."
+        return jsonify({"error": message}), 502
+    return jsonify({"url": session.url})
+
+
+@app.route("/api/billing/webhook", methods=["POST"])
+def api_billing_webhook() -> Response | tuple[Response, int]:
+    """Grant Pro only after Stripe sends a signed completion event."""
+    secret = _clean_env("STRIPE_WEBHOOK_SECRET")
+    if not secret:
+        return jsonify({"error": "Webhook is not configured."}), 503
+    try:
+        import stripe
+
+        event = stripe.Webhook.construct_event(
+            request.get_data(), request.headers.get("Stripe-Signature", ""), secret
+        )
+    except Exception as exc:
+        log.warning("Rejected Stripe webhook: %s", exc)
+        return jsonify({"error": "Invalid webhook."}), 400
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        uid = session.get("metadata", {}).get("firebase_uid")
+        services = _firebase_services()
+        if uid and services:
+            from firebase_admin import firestore
+
+            services[1].collection("users").document(uid).set(
+                {
+                    "plan": "pro",
+                    "pro_since": firestore.SERVER_TIMESTAMP,
+                    "stripe_checkout_session_id": session.get("id"),
+                },
+                merge=True,
+            )
+    return jsonify({"received": True})
 
 
 def _admin_session_ok() -> bool:

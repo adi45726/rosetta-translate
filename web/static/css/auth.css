@@ -98,6 +98,41 @@
 
 .auth-user-menu { min-height: 38px; display: flex; align-items: center; gap: 7px; padding: 4px 10px 4px 5px; border: 1px solid var(--glass-edge); border-radius: 999px; color: var(--ink); background: var(--card); cursor: pointer; }
 .auth-user-menu.hidden, #auth-signout.hidden { display: none; }
+.signout-btn {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid var(--seam);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--card);
+  font: 650 11px/1 var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s, transform .18s;
+}
+.signout-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signout-btn:hover {
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 42%, var(--seam));
+  background: color-mix(in srgb, var(--err) 8%, var(--card));
+  transform: translateY(-1px);
+}
+.signout-btn:active { transform: scale(.97); }
+@media (max-width: 620px) {
+  .signout-btn { width: 42px; min-width: 42px; height: 42px; padding: 0; justify-content: center; }
+  .signout-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
 .auth-user-avatar { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #081020; background: linear-gradient(135deg, #79a8ff, #b28aff); font-size: 12px; font-weight: 800; }
 .auth-user-menu.is-guest .auth-user-avatar { color: var(--muted); background: var(--pane); }
 #auth-user-name { max-width: 92px; overflow: hidden; text-overflow: ellipsis; font-size: 11px; white-space: nowrap; }
