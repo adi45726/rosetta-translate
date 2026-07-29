@@ -1,0 +1,14 @@
+# The Vercel CLI uploads the local working directory, and does NOT honour
+# .gitignore. Without this file, .env -- containing real API keys -- is
+# packaged into the deployment even though git never sees it. Verified: a
+# deploy without this served provider "groq" with no Vercel env var set.
+.env
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.claude/
+tests/
+.git/
