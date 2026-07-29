@@ -142,6 +142,18 @@ def _supports_reasoning_effort(model: str) -> bool:
     return any(marker in lowered for marker in REASONING_MODEL_MARKERS)
 
 
+# Tried in order when the preferred model is rate limited. The free tier's
+# per-model budget is separate, so a 429 on the 120b does not imply a 429 on
+# the 20b -- stepping down keeps working where retrying would not. Quality
+# degrades gracefully rather than the request failing outright.
+FALLBACK_MODELS = ("openai/gpt-oss-20b", "llama-3.1-8b-instant")
+
+
+def models_to_try() -> list[str]:
+    preferred = model_name()
+    return [preferred] + [m for m in FALLBACK_MODELS if m != preferred]
+
+
 def _reasoning_effort_for(model: str) -> str | None:
     """The value that buys the least thinking on `model`, or None if unsupported.
 
@@ -357,7 +369,31 @@ def translate(text: str, source: str, target: str) -> TranslationResult:
     if effort:
         payload["reasoning_effort"] = effort
 
-    parsed = _parse_payload(_content_of(_post(payload, key)))
+    data = None
+    chain = models_to_try()
+    for index, candidate in enumerate(chain):
+        # A fresh dict per attempt rather than mutating one in place: the
+        # payload is handed to the transport, and reusing the object means
+        # anything holding a reference to an earlier attempt sees the later
+        # model instead of the one actually sent.
+        attempt = {**payload, "model": candidate}
+        candidate_effort = _reasoning_effort_for(candidate)
+        if candidate_effort:
+            attempt["reasoning_effort"] = candidate_effort
+        else:
+            attempt.pop("reasoning_effort", None)
+        try:
+            data = _post(attempt, key)
+            break
+        except ProviderUnavailableError:
+            # Only rate limits and outages are worth stepping down for; a
+            # ProviderError means the request itself was wrong, and asking a
+            # smaller model the same bad question gets the same answer.
+            if index == len(chain) - 1:
+                raise
+            continue
+    assert data is not None
+    parsed = _parse_payload(_content_of(data))
 
     primary = _clean_str(parsed.get("translation"))
     if primary is None:

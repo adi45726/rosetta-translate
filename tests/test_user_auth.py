@@ -102,3 +102,63 @@ def test_verify_is_disabled_without_a_project_id(monkeypatch):
 )
 def test_bearer_token_parsing(header, expected):
     assert user_auth.bearer_token(header) == expected
+
+
+# ─── Guest limits, enforced where they cannot be edited away ────────────────
+
+
+def _guest_claims():
+    return {"sub": "guest-uid", "firebase": {"sign_in_provider": "anonymous"}}
+
+
+def _member_claims():
+    return {"sub": "member-uid", "firebase": {"sign_in_provider": "google.com"}}
+
+
+@pytest.fixture
+def as_guest(gated, monkeypatch):
+    monkeypatch.setattr(user_auth, "verify", lambda token: _guest_claims())
+    return gated
+
+
+@pytest.fixture
+def as_member(gated, monkeypatch):
+    monkeypatch.setattr(user_auth, "verify", lambda token: _member_claims())
+    return gated
+
+
+AUTH = {"Authorization": "Bearer token"}
+MEMBER_ONLY = ["/api/chat", "/api/practice", "/api/write", "/api/expression"]
+
+
+@pytest.mark.parametrize("path", MEMBER_ONLY)
+def test_guest_cannot_reach_member_features(as_guest, path):
+    # The browser hides these from guests, but an anonymous token is one
+    # unauthenticated call away -- confirmed against production.
+    resp = as_guest.post(path, json={"message": "hi", "text": "hi", "language": "es"}, headers=AUTH)
+    assert resp.status_code == 403
+    assert "free account" in resp.get_json()["error"]
+
+
+@pytest.mark.parametrize("path", MEMBER_ONLY)
+def test_member_may_reach_member_features(as_member, path):
+    resp = as_member.post(path, json={"message": "hi", "text": "hi", "language": "es"}, headers=AUTH)
+    assert resp.status_code != 403
+
+
+def test_guest_may_translate(as_guest):
+    resp = as_guest.post("/api/translate", json={"text": "hi", "source": "en", "target": "es"}, headers=AUTH)
+    assert resp.status_code != 403
+
+
+def test_guest_translation_is_length_capped(as_guest):
+    over = "x" * (web_app.GUEST_MAX_TEXT_LENGTH + 1)
+    resp = as_guest.post("/api/translate", json={"text": over, "source": "en", "target": "es"}, headers=AUTH)
+    assert resp.status_code == 403
+    assert str(web_app.GUEST_MAX_TEXT_LENGTH) in resp.get_json()["error"]
+
+
+def test_member_is_not_length_capped_at_the_guest_limit(as_member):
+    over = "x" * (web_app.GUEST_MAX_TEXT_LENGTH + 1)
+    resp = as_member.post("/api/translate", json={"text": over, "source": "en", "target": "es"}, headers=AUTH)
+    assert resp.status_code != 403

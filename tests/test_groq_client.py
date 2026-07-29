@@ -322,3 +322,50 @@ def test_empty_choices_is_a_provider_error(mock_post):
     mock_post.return_value = resp
     with pytest.raises(ProviderError):
         groq_client.translate("Hello", "en", "es")
+
+
+# ─── Rate-limit fallback ────────────────────────────────────────────────────
+# These patch `_post`, which returns the already-parsed body, whereas the
+# `_completion` helper above builds a mock *response* for the tests that patch
+# `requests.post`. Hence a separate helper.
+
+
+def _parsed(payload):
+    return {"choices": [{"message": {"role": "assistant", "content": json.dumps(payload)}}]}
+
+
+def test_fallback_chain_starts_with_the_configured_model(monkeypatch):
+    monkeypatch.setenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    chain = groq_client.models_to_try()
+    assert chain[0] == "openai/gpt-oss-120b"
+    assert len(chain) == len(set(chain))  # no duplicates if preferred is also a fallback
+
+
+@patch("translator.groq_client._post")
+def test_rate_limit_steps_down_to_a_smaller_model(mock_post):
+    # The free tier budgets each model separately, so a 429 on the 120b does
+    # not imply one on the 20b.
+    mock_post.side_effect = [
+        ProviderUnavailableError("rate limit"),
+        _parsed({"translation": "Hola"}),
+    ]
+    assert groq_client.translate("Hello", "en", "es").text == "Hola"
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[1].args[0]["model"] != mock_post.call_args_list[0].args[0]["model"]
+
+
+@patch("translator.groq_client._post")
+def test_a_bad_request_does_not_step_down(mock_post):
+    # Asking a smaller model the same malformed question gets the same answer.
+    mock_post.side_effect = ProviderError("model does not exist")
+    with pytest.raises(ProviderError):
+        groq_client.translate("Hello", "en", "es")
+    assert mock_post.call_count == 1
+
+
+@patch("translator.groq_client._post")
+def test_exhausting_the_chain_reraises(mock_post):
+    mock_post.side_effect = ProviderUnavailableError("rate limit")
+    with pytest.raises(ProviderUnavailableError):
+        groq_client.translate("Hello", "en", "es")
+    assert mock_post.call_count == len(groq_client.models_to_try())

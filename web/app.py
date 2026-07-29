@@ -209,13 +209,6 @@ def _current_user() -> dict | None:
         return None
 
 
-def _admin_emails() -> set[str]:
-    return {email.strip().lower() for email in os.environ.get("ADMIN_EMAILS", "").split(",") if email.strip()}
-
-
-def _is_admin(user: dict) -> bool:
-    return bool(user.get("admin")) or user.get("email", "").lower() in _admin_emails()
-
 
 @app.before_request
 def _start_request_timer() -> None:
@@ -235,6 +228,26 @@ def _security_headers(response: Response) -> Response:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    # Locked to the hosts this app genuinely talks to. 'unsafe-inline' is
+    # present because the page carries inline <script> and style attributes
+    # written from JS; removing it needs nonces on every inline block, which is
+    # a bigger change than this pass. Even so, connect-src is the valuable
+    # half: model output is rendered as textContent, but if a future change
+    # ever injects markup, this stops it phoning anywhere but Google/Firebase.
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "script-src 'self' https://www.gstatic.com 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; "
+        "media-src 'self' blob:; "
+        "font-src 'self'; "
+        "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com "
+        "https://securetoken.googleapis.com https://identitytoolkit.googleapis.com "
+        "https://firestore.googleapis.com https://www.gstatic.com; "
+        "frame-src https://*.firebaseapp.com; "
+        "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    )
     if request.path.startswith("/api/") and request.path not in {"/api/config", "/api/profile", "/api/admin/analytics"}:
         try:
             user = _current_user()
@@ -267,6 +280,11 @@ _PROTECTED_PREFIXES = ("/api/translate", "/api/write", "/api/transcribe",
 # Open by design: the client needs these before it can possibly hold a token.
 _OPEN_PATHS = {"/api/config", "/api/practice/scenarios"}
 
+# What an anonymous ("guest") token may reach. Mirrors what the browser shows
+# guests -- translation only -- but enforced where it cannot be edited away.
+_GUEST_ALLOWED = {"/api/translate"}
+GUEST_MAX_TEXT_LENGTH = 250
+
 
 def _requires_user(path: str) -> bool:
     if path in _OPEN_PATHS or path.startswith("/api/admin/"):
@@ -295,7 +313,25 @@ def _require_signed_in_user():
     claims = user_auth.verify(user_auth.bearer_token(request.headers.get("Authorization", "")))
     if claims is None:
         return jsonify({"error": "sign in to use this feature"}), 401
+
     g.user_claims = claims
+    g.is_guest = claims.get("firebase", {}).get("sign_in_provider") == "anonymous"
+
+    # The browser hides the member-only tools from guests, but that is styling,
+    # not a control: an anonymous token is one unauthenticated API call away,
+    # and with it a guest could reach Iris, Practice, camera and voice exactly
+    # as a member does. Confirmed against production before this existed.
+    if g.is_guest and request.path not in _GUEST_ALLOWED:
+        return jsonify({"error": "create a free account to use this feature"}), 403
+
+    # Same reasoning for the length cap the client applies to guests.
+    if g.is_guest and request.path == "/api/translate":
+        body = request.get_json(silent=True)
+        text = body.get("text") if isinstance(body, dict) else None
+        if isinstance(text, str) and len(text) > GUEST_MAX_TEXT_LENGTH:
+            return jsonify(
+                {"error": f"guests can translate up to {GUEST_MAX_TEXT_LENGTH} characters"}
+            ), 403
     return None
 
 
@@ -381,7 +417,8 @@ def api_profile() -> Response | tuple[Response, int]:
         return jsonify(
             {
                 "profile": snapshot.to_dict() if snapshot.exists else None,
-                "is_admin": _is_admin(user),
+                # Admin is a separate passphrase, never a property of a user.
+                "is_admin": False,
                 "anonymous": user.get("firebase", {}).get("sign_in_provider") == "anonymous",
             }
         )
@@ -413,13 +450,13 @@ def api_profile() -> Response | tuple[Response, int]:
     if not existing_profile.exists:
         profile_data["created_at"] = firestore.SERVER_TIMESTAMP
     document.set(profile_data, merge=True)
-    return jsonify({"ok": True, "is_admin": _is_admin(user)})
+    return jsonify({"ok": True, "is_admin": False})
 
 
 @app.route("/api/admin/analytics")
 def api_admin_analytics() -> Response | tuple[Response, int]:
     # Gated by the standalone admin session only. A Firebase ID token -- even
-    # one belonging to an address in ADMIN_EMAILS -- is not accepted here.
+    # one belonging to the operator -- is not accepted here.
     if not admin_auth.is_configured():
         return jsonify({"error": "the dashboard is not configured on this deployment"}), 503
     if not _admin_session_ok():

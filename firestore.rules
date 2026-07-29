@@ -1,26 +1,65 @@
 rules_version = '2';
+
+// Firestore security rules for Rosetta.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+// Writing this file changes nothing until that runs -- whatever the project
+// was created with stays live otherwise.
+//
+// There is deliberately no admin rule here. The dashboard reads through the
+// Firebase Admin SDK, which bypasses these rules completely, so granting a
+// client-side read to some email address buys nothing and costs plenty: it
+// would mean anyone holding a token carrying that email claim could enumerate
+// every profile and every usage record. Admin access is a separate passphrase
+// (web/admin_auth.py) precisely so that no user account, however privileged,
+// is a way in.
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
-    function isAdmin() {
-      return signedIn() && request.auth.token.email == "chakrabartiaditya10@gmail.com";
-    }
+
+    // A profile belongs to exactly one uid and is reachable only by them.
     match /users/{userId} {
-      allow create, read, update: if signedIn() && request.auth.uid == userId;
-      allow read: if isAdmin();
+      allow read: if signedIn() && request.auth.uid == userId;
+
+      // The uid field must agree with both the document id and the caller, so
+      // a profile cannot be written that claims to belong to someone else.
+      // Sizes are capped because these fields are rendered back into the page.
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.keys().hasOnly([
+          "uid", "email", "anonymous", "first_name", "last_name",
+          "role", "purpose", "created_at", "last_seen_at"
+        ])
+        && request.resource.data.first_name is string
+        && request.resource.data.first_name.size() <= 100
+        && request.resource.data.last_name is string
+        && request.resource.data.last_name.size() <= 100;
+
+      // Deletion belongs on the server, where related data can be cleaned up.
       allow delete: if false;
     }
+
+    // Append-only telemetry: a client may record an event about itself and may
+    // never read, edit or remove one. Usage history is not something one user
+    // should be able to enumerate, or another to rewrite.
     match /usage_events/{eventId} {
+      allow read: if false;
+      allow update, delete: if false;
       allow create: if signedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly([
           "uid", "feature", "method", "status", "duration_ms", "anonymous", "created_at"
-        ]);
-      allow read: if isAdmin();
-      allow update, delete: if false;
+        ])
+        && request.resource.data.feature is string
+        && request.resource.data.feature.size() <= 64;
     }
+
+    // Anything not named above is closed. New collections opt in here rather
+    // than inherit access by accident.
     match /{document=**} {
       allow read, write: if false;
     }
