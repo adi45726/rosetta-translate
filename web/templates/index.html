@@ -12,13 +12,116 @@
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='rosetta-icon.svg') }}">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/skiper-links.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script type="importmap">
     { "imports": { "three": "{{ url_for('static', filename='js/vendor/three.module.min.js') }}" } }
   </script>
 </head>
-<body>
+<body class="auth-pending">
+  <section id="auth-gate" class="auth-gate" aria-labelledby="auth-title">
+    <div class="auth-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="auth-layout">
+      <div class="auth-story">
+        <div class="auth-logo" aria-hidden="true">
+          <img src="{{ url_for('static', filename='rosetta-icon.svg') }}" alt="">
+          <span>Rosetta</span>
+        </div>
+        <p class="auth-eyebrow">YOUR LANGUAGE, UNLOCKED</p>
+        <h1 id="auth-title">Understand the world.<br><em>Speak without limits.</em></h1>
+        <p class="auth-lede">Voice, camera, live captions, writing and an intelligent companion—all in one private language workspace.</p>
+        <div class="auth-proof">
+          <span><b>75+</b> languages</span>
+          <span><b>Live</b> voice & camera</span>
+          <span><b>Private</b> by design</span>
+        </div>
+      </div>
+
+      <div class="auth-card glass-surface">
+        <div class="auth-card-head">
+          <span class="auth-mobile-logo"><img src="{{ url_for('static', filename='rosetta-icon.svg') }}" alt="">Rosetta</span>
+          <p class="auth-kicker">Welcome to Rosetta</p>
+          <h2 id="auth-form-title">Sign in to continue</h2>
+          <p id="auth-form-subtitle">Unlock your complete language workspace.</p>
+        </div>
+
+        <button id="auth-google" class="auth-google" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.06H12v3.9h5.38a4.6 4.6 0 0 1-2 3.02v2.53h3.24c1.9-1.75 2.98-4.33 2.98-7.39Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.38l-3.24-2.53c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.61A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.92A6.02 6.02 0 0 1 6.08 12c0-.67.11-1.32.31-1.92V7.47H3.04A10 10 0 0 0 2 12c0 1.61.39 3.14 1.04 4.53l3.35-2.61Z"/><path fill="#EA4335" d="M12 5.95c1.47 0 2.79.51 3.83 1.5l2.87-2.88A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.96 5.47l3.35 2.61C7.18 7.71 9.39 5.95 12 5.95Z"/></svg>
+          Continue with Google
+        </button>
+
+        <div class="auth-divider"><span>or use your email</span></div>
+
+        <form id="auth-form" class="auth-form">
+          <label>Email address
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </label>
+          <label>Password
+            <span class="auth-password-wrap">
+              <input id="auth-password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required>
+              <button id="auth-show-password" type="button" aria-label="Show password">Show</button>
+            </span>
+          </label>
+          <div class="auth-form-meta">
+            <label class="auth-remember"><input id="auth-remember" type="checkbox" checked> Keep me signed in</label>
+            <button id="auth-forgot" class="auth-text-btn" type="button">Forgot password?</button>
+          </div>
+          <p id="auth-error" class="auth-error hidden" role="alert"></p>
+          <button id="auth-submit" class="auth-submit" type="submit"><span>Sign in</span><b aria-hidden="true">→</b></button>
+        </form>
+
+        <p class="auth-switch"><span id="auth-switch-copy">New to Rosetta?</span> <button id="auth-switch-mode" type="button">Create an account</button></p>
+
+        <button id="auth-guest" class="auth-guest" type="button">
+          Continue as guest
+          <small>Basic translation only · limited to 250 characters</small>
+        </button>
+        <p id="auth-setup-note" class="auth-setup-note hidden">Firebase is not connected yet. Guest preview is available.</p>
+        <p class="auth-legal">By continuing, you agree to Rosetta’s Terms and Privacy Policy.</p>
+      </div>
+    </div>
+  </section>
+  <section id="onboarding-gate" class="onboarding-gate hidden" aria-labelledby="onboarding-title">
+    <form id="onboarding-form" class="onboarding-card">
+      <div class="onboarding-progress"><i class="is-active"></i><i></i></div>
+      <div id="onboarding-step-one" class="onboarding-step">
+        <span class="auth-kicker">LET’S GET ACQUAINTED</span>
+        <h2 id="onboarding-title">What should Rosetta call you?</h2>
+        <p>A little context helps us shape your language workspace.</p>
+        <div class="onboarding-name-grid">
+          <label>First name<input id="onboarding-first-name" required maxlength="60" autocomplete="given-name" placeholder="First name"></label>
+          <label>Last name<input id="onboarding-last-name" required maxlength="60" autocomplete="family-name" placeholder="Last name"></label>
+        </div>
+        <button id="onboarding-next" class="auth-submit" type="button"><span>Continue</span><b>→</b></button>
+      </div>
+      <div id="onboarding-step-two" class="onboarding-step hidden">
+        <span class="auth-kicker">PERSONALIZE YOUR SPACE</span>
+        <h2>How will you use Rosetta?</h2>
+        <p>This is stored privately with your Firebase account.</p>
+        <label>Main reason
+          <select id="onboarding-purpose" required>
+            <option value="">Choose your main goal</option><option>Everyday translation</option>
+            <option>Work and business</option><option>Learning a language</option>
+            <option>Travel and local conversations</option><option>Accessibility and live captions</option>
+            <option>Writing and communication</option><option>Something else</option>
+          </select>
+        </label>
+        <label>What best describes you?
+          <select id="onboarding-role" required>
+            <option value="">Choose one</option><option>Student</option><option>Professional</option>
+            <option>Traveler</option><option>Teacher</option><option>Creator</option>
+            <option>Business owner</option><option>Accessibility user</option><option>Other</option>
+          </select>
+        </label>
+        <p id="onboarding-error" class="auth-error hidden" role="alert"></p>
+        <div class="onboarding-actions">
+          <button id="onboarding-back" class="auth-guest" type="button">Back</button>
+          <button id="onboarding-submit" class="auth-submit" type="submit"><span>Enter Rosetta</span><b>→</b></button>
+        </div>
+      </div>
+    </form>
+  </section>
   <div class="ambient-glass" aria-hidden="true">
     <span class="ambient-orb orb-one"></span>
     <span class="ambient-orb orb-two"></span>
@@ -47,6 +150,12 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button id="auth-user-menu" class="auth-user-menu hidden" type="button" title="Account">
+          <span id="auth-user-avatar" class="auth-user-avatar">G</span>
+          <span id="auth-user-name">Guest</span>
+        </button>
+        <button id="auth-signout" class="icon-btn hidden" type="button" title="Sign out" aria-label="Sign out">↪</button>
+        <a id="admin-dashboard-link" class="studio-btn hidden" href="/admin">Admin</a>
         <span id="engine-badge" class="engine-badge" data-provider="{{ provider }}" title="Active translation engine">
           <span class="engine-dot" aria-hidden="true"></span>{{ engine }}
         </span>
@@ -665,6 +774,8 @@
 
   <script id="languages-data" type="application/json">{{ languages | tojson }}</script>
   <script id="app-config" type="application/json">{{ {"maxLength": max_length, "provider": provider, "engine": engine} | tojson }}</script>
+  <script id="firebase-config-data" type="application/json">{{ firebase_config | tojson }}</script>
+  <script type="module" src="{{ url_for('static', filename='js/auth.js') }}"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   <!-- After app.js: shares its global lexical scope for el/closeTools/etc. -->
   <script src="{{ url_for('static', filename='js/companion.js') }}"></script>

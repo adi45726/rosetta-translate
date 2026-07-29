@@ -1,9 +1,11 @@
-const CACHE_NAME = "rosetta-shell-v1";
+const CACHE_NAME = "rosetta-shell-v4";
 const SHELL = [
   "/",
   "/static/css/style.css",
+  "/static/css/auth.css",
   "/static/css/skiper-links.css",
   "/static/js/app.js",
+  "/static/js/auth.js",
   "/static/js/companion.js",
   "/static/rosetta-icon.svg",
   "/static/rosetta-icon-192.png",

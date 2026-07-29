@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == "chakrabartiaditya10@gmail.com";
+    }
+    match /users/{userId} {
+      allow create, read, update: if signedIn() && request.auth.uid == userId;
+      allow read: if isAdmin();
+      allow delete: if false;
+    }
+    match /usage_events/{eventId} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "uid", "feature", "method", "status", "duration_ms", "anonymous", "created_at"
+        ]);
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

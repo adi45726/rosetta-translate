@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import sys
 import threading
@@ -11,8 +12,22 @@ from collections import OrderedDict, deque
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+# Vercel imports this module from the repo root, so web/ is not
+# automatically on the path for its own sibling modules.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from flask import Flask, Response, jsonify, render_template, request  # noqa: E402
+# Same directory as this file; sys.path already includes it on Vercel and
+# locally because Flask runs app.py as __main__ from web/.
+import admin_auth  # noqa: E402
+from flask import (  # noqa: E402
+    Flask,
+    Response,
+    g,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+)
 
 from translator import (  # noqa: E402
     AUTO_DETECT,
@@ -64,6 +79,8 @@ _load_dotenv()
 
 app = Flask(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+_firebase_admin_app = None
+_firebase_admin_lock = threading.Lock()
 
 # Requests per IP per window. Generous for a human typing (the client debounces
 # and caches), tight enough that a script can't burn the Groq quota. Best
@@ -121,6 +138,62 @@ def _client_ip() -> str:
     return forwarded.split(",")[0].strip() or request.remote_addr or "unknown"
 
 
+def _firebase_config() -> dict[str, str]:
+    return {
+        "apiKey": os.environ.get("FIREBASE_API_KEY", ""),
+        "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+        "projectId": os.environ.get("FIREBASE_PROJECT_ID", ""),
+        "storageBucket": os.environ.get("FIREBASE_STORAGE_BUCKET", ""),
+        "messagingSenderId": os.environ.get("FIREBASE_MESSAGING_SENDER_ID", ""),
+        "appId": os.environ.get("FIREBASE_APP_ID", ""),
+    }
+
+
+def _firebase_services():
+    """Return Firebase Auth/Firestore services when server credentials exist."""
+    global _firebase_admin_app
+    service_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON", "")
+    if not service_json:
+        return None
+    with _firebase_admin_lock:
+        if _firebase_admin_app is None:
+            import firebase_admin
+            from firebase_admin import credentials
+
+            credential = credentials.Certificate(json.loads(service_json))
+            _firebase_admin_app = firebase_admin.initialize_app(credential)
+    from firebase_admin import auth, firestore
+
+    return auth, firestore.client(
+        app=_firebase_admin_app,
+        database_id=os.environ.get("FIREBASE_DATABASE_ID", "(default)"),
+    )
+
+
+def _current_user() -> dict | None:
+    services = _firebase_services()
+    header = request.headers.get("Authorization", "")
+    if services is None or not header.startswith("Bearer "):
+        return None
+    try:
+        return services[0].verify_id_token(header[7:])
+    except Exception:
+        return None
+
+
+def _admin_emails() -> set[str]:
+    return {email.strip().lower() for email in os.environ.get("ADMIN_EMAILS", "").split(",") if email.strip()}
+
+
+def _is_admin(user: dict) -> bool:
+    return bool(user.get("admin")) or user.get("email", "").lower() in _admin_emails()
+
+
+@app.before_request
+def _start_request_timer() -> None:
+    g.request_started = time.perf_counter()
+
+
 def reset_state() -> None:
     """Clear the cache and rate-limit table. For tests."""
     with _lock:
@@ -134,6 +207,27 @@ def _security_headers(response: Response) -> Response:
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "no-referrer")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    if request.path.startswith("/api/") and request.path not in {"/api/config", "/api/profile", "/api/admin/analytics"}:
+        try:
+            user = _current_user()
+            services = _firebase_services()
+            if user and services:
+                from firebase_admin import firestore
+
+                services[1].collection("usage_events").add(
+                    {
+                        "uid": user["uid"],
+                        "feature": request.path.removeprefix("/api/"),
+                        "method": request.method,
+                        "status": response.status_code,
+                        "duration_ms": round((time.perf_counter() - g.request_started) * 1000, 1),
+                        "anonymous": user.get("firebase", {}).get("sign_in_provider") == "anonymous",
+                        "created_at": firestore.SERVER_TIMESTAMP,
+                    }
+                )
+        except Exception:
+            # Analytics must never break translation if Firebase is unavailable.
+            pass
     return response
 
 
@@ -145,6 +239,160 @@ def index() -> str:
         max_length=max_text_length(),
         engine=engine_label(),
         provider=active_provider(),
+        firebase_config=_firebase_config(),
+    )
+
+
+def _admin_session_ok() -> bool:
+    return admin_auth.valid_session(request.cookies.get(admin_auth.COOKIE_NAME))
+
+
+@app.route("/admin")
+def admin_dashboard() -> Response | str:
+    """The dashboard, behind its own passphrase.
+
+    Deliberately not tied to the app's user authentication: no Google account,
+    however privileged, opens this page. See web/admin_auth.py.
+    """
+    if not admin_auth.is_configured():
+        # Fail closed. An unconfigured deployment must not expose a dashboard.
+        return make_response(render_template("admin_login.html", disabled=True), 503)
+    if not _admin_session_ok():
+        return make_response(render_template("admin_login.html", disabled=False), 401)
+    return render_template("admin.html", firebase_config=_firebase_config())
+
+
+@app.route("/api/admin/login", methods=["POST"])
+def api_admin_login() -> Response | tuple[Response, int]:
+    if not admin_auth.is_configured():
+        return jsonify({"error": "the dashboard is not configured on this deployment"}), 503
+
+    ip = _client_ip()
+    remaining = admin_auth.locked_out(ip)
+    if remaining:
+        response = jsonify({"error": f"too many attempts — try again in {remaining // 60 + 1} minutes"})
+        response.headers["Retry-After"] = str(remaining)
+        return response, 429
+
+    data = request.get_json(silent=True)
+    passphrase = data.get("passphrase") if isinstance(data, dict) else None
+    if not admin_auth.verify_passphrase(passphrase or "", ip):
+        # One message for every failure mode: distinguishing "wrong passphrase"
+        # from anything else tells an attacker which half they got right.
+        return jsonify({"error": "incorrect passphrase"}), 401
+
+    response = jsonify({"ok": True})
+    response.set_cookie(
+        admin_auth.COOKIE_NAME,
+        admin_auth.issue_session(),
+        max_age=admin_auth.SESSION_MAX_AGE,
+        httponly=True,      # unreadable from JavaScript, so XSS can't lift it
+        samesite="Strict",  # never sent on a cross-site request
+        secure=request.is_secure,
+        path="/",
+    )
+    return response
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def api_admin_logout() -> Response:
+    response = jsonify({"ok": True})
+    response.delete_cookie(admin_auth.COOKIE_NAME, path="/")
+    return response
+
+
+@app.route("/api/profile", methods=["GET", "POST"])
+def api_profile() -> Response | tuple[Response, int]:
+    user = _current_user()
+    services = _firebase_services()
+    if user is None or services is None:
+        return jsonify({"error": "authentication required"}), 401
+    document = services[1].collection("users").document(user["uid"])
+    if request.method == "GET":
+        snapshot = document.get()
+        return jsonify(
+            {
+                "profile": snapshot.to_dict() if snapshot.exists else None,
+                "is_admin": _is_admin(user),
+                "anonymous": user.get("firebase", {}).get("sign_in_provider") == "anonymous",
+            }
+        )
+
+    data = request.get_json(silent=True) or {}
+    first_name = str(data.get("first_name", "")).strip()[:60]
+    last_name = str(data.get("last_name", "")).strip()[:60]
+    purpose = str(data.get("purpose", "")).strip()[:80]
+    role = str(data.get("role", "")).strip()[:80]
+    frequency = str(data.get("frequency", "")).strip()[:40]
+    languages = [str(item)[:40] for item in data.get("languages", [])[:8]] if isinstance(data.get("languages"), list) else []
+    if not first_name or not last_name or not purpose:
+        return jsonify({"error": "first name, last name and purpose are required"}), 400
+    from firebase_admin import firestore
+
+    existing_profile = document.get()
+    profile_data = {
+            "uid": user["uid"],
+            "email": user.get("email"),
+            "anonymous": user.get("firebase", {}).get("sign_in_provider") == "anonymous",
+            "first_name": first_name,
+            "last_name": last_name,
+            "purpose": purpose,
+            "role": role,
+            "frequency": frequency,
+            "languages": languages,
+            "last_seen_at": firestore.SERVER_TIMESTAMP,
+        }
+    if not existing_profile.exists:
+        profile_data["created_at"] = firestore.SERVER_TIMESTAMP
+    document.set(profile_data, merge=True)
+    return jsonify({"ok": True, "is_admin": _is_admin(user)})
+
+
+@app.route("/api/admin/analytics")
+def api_admin_analytics() -> Response | tuple[Response, int]:
+    # Gated by the standalone admin session only. A Firebase ID token -- even
+    # one belonging to an address in ADMIN_EMAILS -- is not accepted here.
+    if not admin_auth.is_configured():
+        return jsonify({"error": "the dashboard is not configured on this deployment"}), 503
+    if not _admin_session_ok():
+        return jsonify({"error": "administrator sign-in required"}), 401
+    services = _firebase_services()
+    if services is None:
+        return jsonify({"error": "analytics storage is not configured"}), 503
+    db = services[1]
+    profiles = [snapshot.to_dict() for snapshot in db.collection("users").limit(500).stream()]
+    from firebase_admin import firestore
+
+    events = [
+        snapshot.to_dict()
+        for snapshot in db.collection("usage_events")
+        .order_by("created_at", direction=firestore.Query.DESCENDING)
+        .limit(1000)
+        .stream()
+    ]
+    feature_counts: dict[str, int] = {}
+    total_duration = 0.0
+    errors = 0
+    for event in events:
+        feature = event.get("feature", "unknown")
+        feature_counts[feature] = feature_counts.get(feature, 0) + 1
+        total_duration += float(event.get("duration_ms", 0))
+        if int(event.get("status", 200)) >= 400:
+            errors += 1
+    return jsonify(
+        {
+            "users": profiles,
+            "recent_events": events[:100],
+            "metrics": {
+                "total_users": len(profiles),
+                "registered_users": sum(not profile.get("anonymous", False) for profile in profiles),
+                "guest_users": sum(bool(profile.get("anonymous", False)) for profile in profiles),
+                "requests": len(events),
+                "errors": errors,
+                "average_speed_ms": round(total_duration / len(events)) if events else 0,
+                "feature_counts": feature_counts,
+            },
+        }
     )
 
 

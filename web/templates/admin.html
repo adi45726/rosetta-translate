@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b18">
+  <title>Rosetta Admin</title>
+  <link rel="icon" href="{{ url_for('static', filename='rosetta-icon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <a class="admin-brand" href="/"><img src="{{ url_for('static', filename='rosetta-icon.svg') }}" alt=""><span>Rosetta<small>Control room</small></span></a>
+      <nav><button class="is-active">Overview</button><button data-scroll="customers">Customers</button><button data-scroll="activity">Activity</button></nav>
+      <a class="admin-back" href="/">← Back to translator</a>
+    </aside>
+    <main>
+      <header><div><p>ADMIN CONSOLE</p><h1>Good to see you.</h1><span>Live product health and customer activity.</span></div><button id="admin-refresh">Refresh data</button></header>
+      <section id="admin-auth" class="admin-auth">
+        <h2>Administrator sign-in</h2><p>Use the Google account listed in the <code>ADMIN_EMAILS</code> environment variable.</p>
+        <button id="admin-google">Continue with Google</button><p id="admin-auth-error"></p>
+      </section>
+      <div id="admin-content" class="hidden">
+        <section class="admin-kpis">
+          <article><span>Total customers</span><strong id="metric-users">—</strong><small id="metric-split">Loading…</small></article>
+          <article><span>Tracked actions</span><strong id="metric-requests">—</strong><small>Latest 1,000 events</small></article>
+          <article><span>Average speed</span><strong id="metric-speed">—</strong><small>Server response time</small></article>
+          <article><span>Error rate</span><strong id="metric-errors">—</strong><small>Requests returning 4xx/5xx</small></article>
+        </section>
+        <section class="admin-grid">
+          <article class="admin-panel"><div class="panel-head"><div><span>FEATURE ADOPTION</span><h2>What people use</h2></div></div><div id="feature-chart" class="feature-chart"></div></article>
+          <article class="admin-panel"><div class="panel-head"><div><span>AUDIENCE</span><h2>Why they use Rosetta</h2></div></div><div id="purpose-chart" class="purpose-chart"></div></article>
+        </section>
+        <section id="customers" class="admin-panel admin-table-panel"><div class="panel-head"><div><span>CUSTOMERS</span><h2>User directory</h2></div><input id="customer-search" type="search" placeholder="Search customers…"></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Account</th><th>Purpose</th><th>Role</th><th>Frequency</th></tr></thead><tbody id="customer-table"></tbody></table></div></section>
+        <section id="activity" class="admin-panel admin-table-panel"><div class="panel-head"><div><span>ACTIVITY</span><h2>Recent product events</h2></div></div><div class="table-wrap"><table><thead><tr><th>Feature</th><th>User ID</th><th>Account</th><th>Speed</th><th>Status</th><th>Time</th></tr></thead><tbody id="event-table"></tbody></table></div></section>
+      </div>
+    </main>
+  </div>
+  <script id="firebase-config-data" type="application/json">{{ firebase_config | tojson }}</script>
+  <script type="module" src="{{ url_for('static', filename='js/admin.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Rosetta — administrator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <main class="admin-gate">
+    <div class="admin-gate-card glass-surface">
+      <span class="section-kicker">Restricted</span>
+      <h1>Administrator access</h1>
+      {% if disabled %}
+        <p class="admin-gate-note">
+          The dashboard is not configured on this deployment. Set
+          <code>ADMIN_PASSWORD_HASH</code> and <code>SECRET_KEY</code> to enable it.
+        </p>
+      {% else %}
+        <p class="admin-gate-note">
+          This area uses its own passphrase. Signing in to Rosetta with any account,
+          including yours, does not grant access here.
+        </p>
+        <form id="admin-login-form" class="admin-gate-form">
+          <label class="field">
+            <span class="field-label">Passphrase</span>
+            <input id="admin-passphrase" class="companion-input" type="password"
+                   autocomplete="current-password" required aria-label="Administrator passphrase">
+          </label>
+          <button id="admin-login-submit" class="companion-send liquid-btn" type="submit">Unlock</button>
+        </form>
+        <p id="admin-login-error" class="companion-error hidden" role="alert"></p>
+      {% endif %}
+      <a class="sk-underline admin-gate-back" href="/">&larr; Back to Rosetta</a>
+    </div>
+  </main>
+  <script>
+    const f = document.getElementById("admin-login-form");
+    if (f) {
+      const err = document.getElementById("admin-login-error");
+      const btn = document.getElementById("admin-login-submit");
+      f.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        btn.disabled = true;
+        err.classList.add("hidden");
+        try {
+          const res = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ passphrase: document.getElementById("admin-passphrase").value }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) { location.reload(); return; }
+          err.textContent = data.error || "Sign-in failed.";
+          err.classList.remove("hidden");
+        } catch {
+          err.textContent = "Network error.";
+          err.classList.remove("hidden");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

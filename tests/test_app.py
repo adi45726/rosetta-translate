@@ -19,6 +19,27 @@ def test_index_ok(client):
     resp = client.get("/")
     assert resp.status_code == 200
     assert b"Rosetta" in resp.data
+    assert b'id="auth-gate"' in resp.data
+    assert b'id="auth-google"' in resp.data
+
+
+def test_index_includes_public_firebase_config(client, monkeypatch):
+    monkeypatch.setenv("FIREBASE_API_KEY", "public-web-key")
+    monkeypatch.setenv("FIREBASE_AUTH_DOMAIN", "rosetta.firebaseapp.com")
+    monkeypatch.setenv("FIREBASE_PROJECT_ID", "rosetta")
+    monkeypatch.setenv("FIREBASE_APP_ID", "web-app-id")
+    response = client.get("/")
+    assert b"public-web-key" in response.data
+    assert b"rosetta.firebaseapp.com" in response.data
+
+
+def test_admin_dashboard_is_not_reachable_without_its_own_passphrase(client):
+    # This used to assert a 200: the console rendered for anyone, gated only by
+    # a client-side email check. It now has its own credential (admin_auth),
+    # and with none configured in tests it must fail closed rather than open.
+    response = client.get("/admin")
+    assert response.status_code == 503
+    assert b"admin-google" not in response.data
 
 
 def test_security_headers_present(client):
