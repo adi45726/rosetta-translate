@@ -1,0 +1,196 @@
+/**
+ * Animated link/label interactions, ported to vanilla CSS.
+ *
+ * Adapted from Skiper UI's "Skiper 40 — Animated Link" React component
+ * (https://skiper-ui.com, `npx shadcn add @skiper-ui/skiper40`), by
+ * @gurvinder-singh02. Free for personal and commercial use with attribution,
+ * which this project carries in the page footer as well as here.
+ *
+ * The original ships as a Tailwind-classed React component. Rosetta is a Flask
+ * app with no build step, no React and no Tailwind, so these are hand-written
+ * equivalents of the same five interactions rather than a copy of the source:
+ *
+ *   .sk-underline           Link001 — rule enters from the left, retracts right
+ *   .sk-underline--reverse  Link002 — the mirror image of the above
+ *   .sk-underline--center   Link003 — rule opens outward from the middle
+ *   .sk-rise                Link004 — bar grows up over the text, inverting it
+ *   .sk-wipe                Link005 — bar sweeps across the text, inverting it
+ *
+ * The two inverting variants keep the original's *effect* -- text flipping to
+ * its inverse as a bar passes through it -- but compute the inversion with
+ * explicit colours instead of `mix-blend-mode: difference`. The original
+ * assumes an opaque, high-contrast backdrop. Rosetta's surfaces are
+ * translucent glass over a colour gradient, and a difference blend against
+ * those resolves to mid-grey: measured on the alternate chips, the label came
+ * out barely legible. Painting `--ink` behind the text and flipping the text
+ * to `--bg` is the same inversion, and it holds in both themes.
+ *
+ * Everything keys off `:hover, :focus-visible` (the original is hover-only —
+ * keyboard users got nothing) and collapses to a plain static underline under
+ * `prefers-reduced-motion`.
+ */
+
+/* The shared trick: the rule sits at scaleX(0) with its origin on one side,
+   and on hover flips origin to the *other* side before scaling to 1. Entry and
+   exit therefore travel the same direction, so a quick hover-out reads as the
+   rule continuing through rather than snapping back. */
+.sk-underline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sk-underline::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.18em;
+  width: 100%;
+  height: max(1px, 0.05em);
+  background: currentColor;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sk-underline:hover::before,
+.sk-underline:focus-visible::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.sk-underline--reverse::before {
+  transform-origin: left;
+}
+.sk-underline--reverse:hover::before,
+.sk-underline--reverse:focus-visible::before {
+  transform-origin: right;
+}
+
+.sk-underline--center::before,
+.sk-underline--center:hover::before,
+.sk-underline--center:focus-visible::before {
+  transform-origin: center;
+}
+
+/* The ↗ glyph that trails an external link: parked low and invisible, it
+   slides up into place with the rule. */
+.sk-arrow {
+  width: 0.58em;
+  height: 0.58em;
+  margin-left: 0.35em;
+  flex: none;
+  opacity: 0;
+  transform: translateY(0.25em);
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sk-underline:hover .sk-arrow,
+.sk-underline:focus-visible .sk-arrow,
+.sk-rise:hover .sk-arrow,
+.sk-rise:focus-visible .sk-arrow,
+.sk-wipe:hover .sk-arrow,
+.sk-wipe:focus-visible .sk-arrow {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Link004: the bar grows upward from the baseline until it has swallowed the
+   text, which inverts as it goes. The arrow rotates to 45° on the way. */
+.sk-rise,
+.sk-wipe {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  padding: 0 0.5em;
+  transition: color 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sk-rise:hover,
+.sk-rise:focus-visible,
+.sk-wipe:hover,
+.sk-wipe:focus-visible {
+  color: var(--bg);
+}
+
+.sk-rise::before,
+.sk-wipe::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background: var(--ink);
+  pointer-events: none;
+  /* Behind the label, so the text stays crisp and simply changes colour. */
+  z-index: -1;
+}
+
+.sk-rise::before {
+  bottom: 0;
+  height: 0;
+  transition: height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sk-rise:hover::before,
+.sk-rise:focus-visible::before {
+  height: 100%;
+}
+.sk-rise:hover .sk-arrow,
+.sk-rise:focus-visible .sk-arrow {
+  transform: translateY(0) rotate(45deg);
+}
+
+/* Link005: same inversion, but the bar sweeps in from the left across the
+   full height instead of rising. */
+.sk-wipe::before {
+  top: 0;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sk-wipe:hover::before,
+.sk-wipe:focus-visible::before {
+  transform: scaleX(1);
+}
+.sk-wipe .sk-arrow {
+  transform: translateX(-0.25em) rotate(45deg);
+}
+.sk-wipe:hover .sk-arrow,
+.sk-wipe:focus-visible .sk-arrow {
+  transform: translateX(0) rotate(45deg);
+}
+
+/* The arrow inherits `color`, so it flips with the label for free. */
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-underline::before,
+  .sk-rise::before,
+  .sk-wipe::before,
+  .sk-arrow {
+    transition: none;
+  }
+  /* No motion to convey the affordance, so make the underline permanent and
+     let the inverting bars appear instantly rather than sliding. */
+  .sk-underline::before {
+    transform: scaleX(1);
+    opacity: 0.35;
+  }
+  .sk-underline:hover::before,
+  .sk-underline:focus-visible::before {
+    opacity: 1;
+  }
+  .sk-rise,
+  .sk-wipe {
+    transition: none;
+  }
+  .sk-arrow {
+    opacity: 0.55;
+    transform: none;
+  }
+}

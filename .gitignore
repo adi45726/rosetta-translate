@@ -1,4 +1,5 @@
 venv/
+.env
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -8,3 +9,8 @@ __pycache__/
 .DS_Store
 .vercel/
 .vercel
+
+.octogent
+
+# Local agent tooling config (machine-specific hooks)
+.claude/

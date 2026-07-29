@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from translator.client import translate
+from translator.client import translate, translate_with_alternates
 from translator.exceptions import ProviderError, ProviderUnavailableError
 
 
@@ -82,6 +82,71 @@ def test_translate_ignores_all_low_quality_matches_and_falls_back(mock_get):
         }
     )
     assert translate("hi", "en", "es") == "fallback text"
+
+
+@patch("translator.client.requests.get")
+def test_translate_with_alternates_returns_primary_and_others(mock_get):
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "Hola mundo"},
+            "matches": [
+                {"match": 1, "quality": "90", "created-by": "a", "translation": "Hola mundo"},
+                {"match": 0.9, "quality": "80", "created-by": "b", "translation": "Hola, mundo"},
+                {"match": 0.85, "quality": "70", "created-by": "c", "translation": "Hola planeta"},
+            ],
+        }
+    )
+    result = translate_with_alternates("Hello world", "en", "es")
+    assert result.text == "Hola mundo"
+    assert result.alternates == ["Hola, mundo", "Hola planeta"]
+
+
+@patch("translator.client.requests.get")
+def test_translate_with_alternates_respects_max_alternates(mock_get):
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "a"},
+            "matches": [
+                {"match": 1.0, "quality": "90", "created-by": "x", "translation": "a"},
+                {"match": 0.9, "quality": "90", "created-by": "x", "translation": "b"},
+                {"match": 0.8, "quality": "90", "created-by": "x", "translation": "c"},
+                {"match": 0.7, "quality": "90", "created-by": "x", "translation": "d"},
+            ],
+        }
+    )
+    result = translate_with_alternates("hi", "en", "es", max_alternates=2)
+    assert result.text == "a"
+    assert result.alternates == ["b", "c"]
+
+
+@patch("translator.client.requests.get")
+def test_translate_with_alternates_dedupes_identical_translations(mock_get):
+    mock_get.return_value = _mock_response(
+        {
+            "responseStatus": 200,
+            "responseData": {"translatedText": "a"},
+            "matches": [
+                {"match": 1.0, "quality": "90", "created-by": "x", "translation": "a"},
+                {"match": 0.9, "quality": "90", "created-by": "x", "translation": "a"},
+                {"match": 0.8, "quality": "90", "created-by": "x", "translation": "b"},
+            ],
+        }
+    )
+    result = translate_with_alternates("hi", "en", "es")
+    assert result.text == "a"
+    assert result.alternates == ["b"]
+
+
+@patch("translator.client.requests.get")
+def test_translate_with_alternates_no_matches_has_no_alternates(mock_get):
+    mock_get.return_value = _mock_response(
+        {"responseStatus": 200, "responseData": {"translatedText": "solo"}, "matches": []}
+    )
+    result = translate_with_alternates("hi", "en", "es")
+    assert result.text == "solo"
+    assert result.alternates == []
 
 
 @patch("translator.client.requests.get")

@@ -1,8 +1,9 @@
 """Thin client for the MyMemory translation API.
 
-Deliberately kept to one function so the provider is swappable -- a paid API
-(DeepL, Google Cloud Translation, Azure Translator) can replace the body of
-`translate()` without touching any caller in web/app.py.
+The keyless baseline provider, and the fallback when Groq is unconfigured or
+failing -- see `engine.py`, which is what callers actually go through. Kept to
+one network function so a third provider (DeepL, Google Cloud Translation) is
+a new module plus one branch in the engine, and nothing else.
 
 MyMemory quirks worth documenting:
 
@@ -27,10 +28,15 @@ from typing import Any
 import requests
 
 from .exceptions import ProviderError, ProviderUnavailableError
+from .result import TranslationResult
 
 MYMEMORY_ENDPOINT = "https://api.mymemory.translated.net/get"
 REQUEST_TIMEOUT_SECONDS = 8.0
 MIN_ACCEPTABLE_QUALITY = 40
+DEFAULT_MAX_ALTERNATES = 3
+MAX_TEXT_LENGTH = 500
+
+__all__ = ["TranslationResult", "translate", "translate_with_alternates"]
 
 
 def _quality_of(entry: dict[str, Any]) -> int | None:
@@ -54,11 +60,12 @@ def _match_score_of(entry: dict[str, Any]) -> float:
         return 0.0
 
 
-def _best_translation(data: dict[str, Any]) -> str | None:
-    """Re-rank `matches` by (match score, quality), dropping low-quality entries.
+def _ranked_translations(data: dict[str, Any]) -> list[str]:
+    """All acceptable-quality candidates from `matches`, ranked best-first, deduped.
 
-    Falls back to None (caller uses the top-level field) if there are no
-    usable candidates -- e.g. a pure-MT response with an empty `matches` list.
+    Empty (not None) when there are no usable candidates -- e.g. a pure-MT
+    response with an empty `matches` list -- so callers fall back to the
+    top-level field.
     """
     candidates = []
     for entry in data.get("matches") or []:
@@ -68,16 +75,21 @@ def _best_translation(data: dict[str, Any]) -> str | None:
         quality = _quality_of(entry)
         if quality is not None and quality < MIN_ACCEPTABLE_QUALITY:
             continue
-        candidates.append((_match_score_of(entry), quality if quality is not None else 50, translation))
-
-    if not candidates:
-        return None
+        candidates.append(
+            (_match_score_of(entry), quality if quality is not None else 50, translation.strip())
+        )
     candidates.sort(key=lambda c: (c[0], c[1]), reverse=True)
-    return candidates[0][2]
+
+    seen: set[str] = set()
+    ranked: list[str] = []
+    for _, _, text in candidates:
+        if text not in seen:
+            seen.add(text)
+            ranked.append(text)
+    return ranked
 
 
-def translate(text: str, source: str, target: str) -> str:
-    """Translate `text` from `source` to `target` (language codes, e.g. "en", "es")."""
+def _fetch(text: str, source: str, target: str) -> dict[str, Any]:
     try:
         response = requests.get(
             MYMEMORY_ENDPOINT,
@@ -94,8 +106,27 @@ def translate(text: str, source: str, target: str) -> str:
     if str(data.get("responseStatus")) != "200":
         message = data.get("responseDetails") or "translation failed"
         raise ProviderError(str(message))
+    return data
 
-    translated = _best_translation(data) or data.get("responseData", {}).get("translatedText")
+
+def translate(text: str, source: str, target: str) -> str:
+    """Translate `text` from `source` to `target` (language codes, e.g. "en", "es")."""
+    data = _fetch(text, source, target)
+    ranked = _ranked_translations(data)
+    translated = ranked[0] if ranked else data.get("responseData", {}).get("translatedText")
     if not isinstance(translated, str) or not translated:
         raise ProviderError("translation service returned no text")
     return translated
+
+
+def translate_with_alternates(
+    text: str, source: str, target: str, max_alternates: int = DEFAULT_MAX_ALTERNATES
+) -> TranslationResult:
+    """Like `translate`, but also returns up to `max_alternates` other candidate translations."""
+    data = _fetch(text, source, target)
+    ranked = _ranked_translations(data)
+    primary = ranked[0] if ranked else data.get("responseData", {}).get("translatedText")
+    if not isinstance(primary, str) or not primary:
+        raise ProviderError("translation service returned no text")
+    alternates = [t for t in ranked if t != primary][:max_alternates]
+    return TranslationResult(text=primary, alternates=alternates)

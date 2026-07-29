@@ -4,61 +4,480 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rosetta — translate anything, into anything</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22none%22 stroke=%22%234f8ff7%22 stroke-width=%222%22/><text x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22%234f8ff7%22 font-family=%22serif%22>&#10101;</text></svg>">
+  <meta name="description" content="Translate between 75 languages with automatic source detection, alternate phrasings and romanization.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 fill=%22none%22><path d=%22M7 4.5h18A1.5 1.5 0 0 1 26.5 6v17.4a1.5 1.5 0 0 1-.44 1.06l-3.6 3.6a1.5 1.5 0 0 1-1.06.44H7A1.5 1.5 0 0 1 5.5 27V6A1.5 1.5 0 0 1 7 4.5Z%22 stroke=%22%234f8ff7%22 stroke-width=%221.5%22 opacity=%220.5%22/><path d=%22M9.75 11h12.5M9.75 16h12.5M9.75 21h7.5%22 stroke=%22%234f8ff7%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/skiper-links.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script type="importmap">
+    { "imports": { "three": "{{ url_for('static', filename='js/vendor/three.module.min.js') }}" } }
+  </script>
 </head>
 <body>
+  <div class="ambient-glass" aria-hidden="true">
+    <span class="ambient-orb orb-one"></span>
+    <span class="ambient-orb orb-two"></span>
+    <span class="ambient-orb orb-three"></span>
+  </div>
+  <!-- Reused by every animated link; cloned in app.js rather than repeated inline. -->
+  <template id="arrow-template">
+    <svg class="sk-arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+      <path d="M1.004 9.166 9.337.833m0 0v8.333m0-8.333H1.004" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </template>
+
   <div class="app">
-    <header class="topbar">
+    <header class="topbar reveal" style="--reveal-order: 0">
       <div class="brand">
-        <span class="mark">&#10101;</span>
-        <div>
+        <!-- A tablet with a clipped corner and three lines of script: the
+             Rosetta Stone's three writing systems, which is the whole idea. -->
+        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M7 4.5h18A1.5 1.5 0 0 1 26.5 6v17.4a1.5 1.5 0 0 1-.44 1.06l-3.6 3.6a1.5 1.5 0 0 1-1.06.44H7A1.5 1.5 0 0 1 5.5 27V6A1.5 1.5 0 0 1 7 4.5Z" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+          <path d="M9.75 11h12.5M9.75 16h12.5M9.75 21h7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-kicker">Liquid language workspace</span>
           <h1>Rosetta</h1>
           <p class="subtitle">Translate anything, into anything.</p>
         </div>
       </div>
       <div class="topbar-actions">
+        <span id="engine-badge" class="engine-badge" data-provider="{{ provider }}" title="Active translation engine">
+          <span class="engine-dot" aria-hidden="true"></span>{{ engine }}
+        </span>
+        <button id="btn-tools" class="studio-btn liquid-btn" aria-expanded="false" aria-controls="tools-panel">
+          <span aria-hidden="true">✦</span> Tools
+        </button>
+        <button id="btn-history" class="icon-btn" title="Translation history" aria-label="Translation history" aria-expanded="false">&#8635;</button>
         <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">&#9680;</button>
-        <a class="repo-link" href="https://github.com/adi45726/rosetta-translate" target="_blank" rel="noopener">GitHub &#8599;</a>
+        <a class="repo-link sk-wipe" data-arrow href="https://github.com/adi45726/rosetta-translate" target="_blank" rel="noopener">GitHub</a>
       </div>
     </header>
 
-    <main class="card">
+    <div id="modal-backdrop" class="modal-backdrop hidden" aria-hidden="true"></div>
+
+    <section id="tools-panel" class="tools-panel hidden" aria-labelledby="tools-title">
+      <div class="tools-head">
+        <div>
+          <span class="section-kicker">Choose a workspace</span>
+          <h2 id="tools-title">Rosetta tools</h2>
+        </div>
+        <button id="btn-close-tools" class="icon-btn" aria-label="Close tools">×</button>
+      </div>
+      <div class="tool-grid">
+        <button id="btn-writing" class="tool-card" aria-expanded="false">
+          <span class="tool-icon" aria-hidden="true">Aa</span>
+          <span><strong>Writing Studio</strong><small>Humanize, rewrite, simplify and change tone.</small></span>
+          <span class="tool-arrow" aria-hidden="true">→</span>
+        </button>
+        <button id="btn-captions" class="tool-card" aria-expanded="false">
+          <span class="tool-icon" aria-hidden="true">CC</span>
+          <span><strong>Live Captions</strong><small>Turn nearby speech into readable text.</small></span>
+          <span class="tool-arrow" aria-hidden="true">→</span>
+        </button>
+        <button id="btn-tool-voice" class="tool-card">
+          <span class="tool-icon" aria-hidden="true">◉</span>
+          <span><strong>Live Voice Translate</strong><small>Auto-detect speech and translate while talking.</small></span>
+          <span class="tool-arrow" aria-hidden="true">→</span>
+        </button>
+        <button id="btn-camera" class="tool-card" aria-expanded="false">
+          <span class="tool-icon" aria-hidden="true">▣</span>
+          <span><strong>Camera Translate</strong><small>Scan signs, menus and documents with translated overlays.</small></span>
+          <span class="tool-arrow" aria-hidden="true">→</span>
+        </button>
+        <button id="btn-companion" class="tool-card" aria-expanded="false">
+          <span class="tool-icon" aria-hidden="true">☻</span>
+          <span><strong>Talk to Iris</strong><small>A companion who chats naturally — and can read the room.</small></span>
+          <span class="tool-arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="companion-panel" class="companion-panel glass-surface hidden" aria-labelledby="companion-title">
+      <div class="companion-head">
+        <div class="companion-identity">
+          <div class="iris-stage">
+            <span class="iris-ring" aria-hidden="true"></span>
+            <span class="iris-particle particle-a" aria-hidden="true"></span>
+            <span class="iris-particle particle-b" aria-hidden="true"></span>
+            <span class="iris-particle particle-c" aria-hidden="true"></span>
+            <span class="iris-particle particle-d" aria-hidden="true"></span>
+            <!-- Eyes and mouth are driven from JS per feeling; blink, sway and
+                 the speaking pulse run in CSS so they continue while thinking. -->
+            <svg id="iris-face" class="iris-face" viewBox="0 0 96 96" data-feeling="warm" aria-hidden="true">
+              <defs>
+                <radialGradient id="iris-halo" cx="50%" cy="42%" r="60%">
+                  <stop offset="0%" stop-color="var(--iris-glow)" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="var(--iris-glow)" stop-opacity="0.1"/>
+                </radialGradient>
+              </defs>
+              <circle class="iris-halo" cx="48" cy="48" r="42" fill="url(#iris-halo)"/>
+              <circle class="iris-head" cx="48" cy="48" r="33" fill="none" stroke="var(--iris-line)" stroke-width="2"/>
+              <g class="iris-eyes" fill="var(--iris-line)">
+                <ellipse class="iris-eye" cx="37" cy="43" rx="3.6" ry="4.6"/>
+                <ellipse class="iris-eye" cx="59" cy="43" rx="3.6" ry="4.6"/>
+              </g>
+              <path id="iris-brow-l" class="iris-brow" d="M31 34 Q37 31 43 34" fill="none"
+                    stroke="var(--iris-line)" stroke-width="2" stroke-linecap="round"/>
+              <path id="iris-brow-r" class="iris-brow" d="M53 34 Q59 31 65 34" fill="none"
+                    stroke="var(--iris-line)" stroke-width="2" stroke-linecap="round"/>
+              <path id="iris-mouth" class="iris-mouth" d="M38 60 Q48 68 58 60" fill="none"
+                    stroke="var(--iris-line)" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <span class="section-kicker">Companion</span>
+            <h2 id="companion-title">Iris</h2>
+            <p id="iris-feeling" class="iris-feeling">feeling warm</p>
+          </div>
+        </div>
+        <div class="companion-head-actions">
+          <button id="btn-iris-voice" class="icon-btn" type="button" aria-pressed="false"
+                  title="Iris reads her replies aloud">&#128266;</button>
+          <button id="btn-iris-clear" class="icon-btn" type="button" title="Start a new conversation">&#8635;</button>
+          <button id="btn-close-companion" class="icon-btn" aria-label="Close Iris">×</button>
+        </div>
+      </div>
+
+      <div class="companion-body">
+        <div id="companion-thread" class="companion-thread" role="log" aria-live="polite">
+          <div id="companion-opening" class="companion-opening">
+            <div class="opening-glow" aria-hidden="true"></div>
+            <p class="opening-hello">Hi, I&rsquo;m Iris.</p>
+            <p class="opening-sub">Ask me anything, or just tell me how your day is going. Turn the camera on and I&rsquo;ll read the room.</p>
+            <div class="opening-chips">
+              <button class="starter-chip" type="button" data-say="How do I say &ldquo;where is the train station?&rdquo; in Japanese?">Ask a translation</button>
+              <button class="starter-chip" type="button" data-say="Help me write a polite message to my landlord.">Help me write</button>
+              <button class="starter-chip" type="button" data-say="Teach me three useful Spanish phrases for a cafe.">Teach me phrases</button>
+              <button class="starter-chip" type="button" data-say="Honestly, today has been rough.">Just talk</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="companion-vision">
+          <div id="vision-stage" class="vision-stage">
+            <video id="companion-video" class="companion-video" playsinline muted autoplay></video>
+            <div class="vision-placeholder">
+              <span aria-hidden="true">&#9673;</span>
+              <p>Camera off</p>
+            </div>
+            <span id="vision-live" class="vision-live hidden" aria-hidden="true">LIVE</span>
+            <span id="vision-scan" class="vision-scan hidden" aria-hidden="true"></span>
+            <span id="mood-chip" class="mood-chip hidden"></span>
+          </div>
+          <canvas id="companion-canvas" class="hidden" aria-hidden="true"></canvas>
+          <label class="vision-toggle">
+            <input type="checkbox" id="companion-see">
+            <span>Let Iris see me</span>
+          </label>
+          <p id="companion-vision-note" class="companion-vision-note">
+            Off by default. When on, a small snapshot goes to the AI provider every few seconds &mdash; never recorded, never stored.
+          </p>
+        </aside>
+      </div>
+
+      <div id="voice-bar" class="voice-bar hidden" aria-hidden="true">
+        <div class="voice-orb">
+          <span class="orb-ripple"></span>
+          <span class="orb-ripple orb-ripple-2"></span>
+          <span class="orb-core"></span>
+        </div>
+        <div class="voice-bar-text">
+          <span id="voice-heard" class="voice-heard">Listening…</span>
+          <span class="voice-hint">tap the mic again to stop</span>
+        </div>
+        <div id="voice-wave" class="voice-wave" aria-hidden="true"></div>
+      </div>
+
+      <form id="companion-form" class="companion-form">
+        <button id="btn-iris-mic" class="icon-btn" type="button" title="Hold to speak" aria-label="Speak to Iris">&#127908;</button>
+        <input id="companion-input" class="companion-input" type="text" autocomplete="off"
+               placeholder="Say something to Iris…" maxlength="2000" aria-label="Message to Iris">
+        <button id="btn-send-companion" class="companion-send liquid-btn" type="submit">Send</button>
+      </form>
+      <div id="companion-error" class="companion-error hidden" role="alert"></div>
+    </section>
+
+    <section id="camera-panel" class="camera-panel hidden" aria-labelledby="camera-title">
+      <div class="camera-head">
+        <div>
+          <span class="section-kicker">Visual translation</span>
+          <h2 id="camera-title">Camera Translate</h2>
+        </div>
+        <button id="btn-close-camera" class="icon-btn" aria-label="Close camera">×</button>
+      </div>
+      <div class="camera-stage">
+        <video id="camera-video" playsinline muted aria-label="Live camera preview"></video>
+        <img id="camera-image-preview" class="camera-image-preview hidden" alt="Uploaded image preview">
+        <canvas id="camera-canvas" class="hidden"></canvas>
+        <div id="camera-regions" class="camera-regions" aria-live="polite"></div>
+        <div class="camera-reticle" aria-hidden="true"></div>
+        <div id="camera-message" class="camera-message">Starting camera…</div>
+      </div>
+      <div class="camera-actions">
+        <button id="btn-scan-camera" class="caption-primary liquid-btn">Scan now</button>
+        <label class="text-btn camera-upload-btn">
+          Upload image
+          <input id="camera-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        </label>
+        <button id="btn-flip-camera" class="text-btn">Flip camera</button>
+        <button id="btn-use-camera-text" class="text-btn" disabled>Use in translator</button>
+        <button id="btn-copy-camera-text" class="text-btn" disabled>Copy translation</button>
+        <label class="auto-scan-toggle">
+          <input id="camera-auto-scan" type="checkbox">
+          <span>Auto scan</span>
+        </label>
+        <span id="camera-status" class="caption-status" role="status"></span>
+      </div>
+      <div id="camera-drop-zone" class="camera-drop-zone">Drop a photo or screenshot here to translate it</div>
+      <p class="caption-help">Point the camera at clear text and hold steady. Translation appears over the detected area. Camera frames are sent only when a scan runs.</p>
+    </section>
+
+    <section id="voice-mode-panel" class="voice-mode-panel hidden" aria-labelledby="voice-mode-title">
+      <div class="voice-mode-head">
+        <div>
+          <span class="section-kicker">Hands-free conversation</span>
+          <h2 id="voice-mode-title">Rosetta Voice</h2>
+        </div>
+        <button id="btn-close-voice-mode" class="icon-btn" aria-label="Close voice mode">×</button>
+      </div>
+      <div class="voice-orb-stage">
+        <button id="voice-orb" class="voice-orb" type="button" aria-label="Start voice translation">
+          <span class="voice-orb-core"></span>
+          <span class="voice-orb-wave wave-one"></span>
+          <span class="voice-orb-wave wave-two"></span>
+          <span class="voice-orb-wave wave-three"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 1 0-7 0v6a3.5 3.5 0 0 0 3.5 3.5Z"/>
+            <path d="M5.5 11.5v.5a6.5 6.5 0 0 0 13 0v-.5M12 18.5V22M9 22h6"/>
+          </svg>
+        </button>
+        <p id="voice-mode-status">Tap the orb and start speaking</p>
+        <span id="voice-mode-timer">Auto-detect language · translates continuously</span>
+      </div>
+      <div class="voice-conversation">
+        <article>
+          <span>You said</span>
+          <p id="voice-mode-source">Your live transcript will appear here.</p>
+        </article>
+        <article>
+          <span>Translation</span>
+          <p id="voice-mode-target">Choose a target language, then start speaking.</p>
+        </article>
+      </div>
+      <div class="voice-mode-actions">
+        <label><span>Translate to</span><select id="voice-mode-target-lang" aria-label="Voice translation target"></select></label>
+        <button id="btn-clear-voice-mode" class="text-btn">Clear conversation</button>
+        <button id="btn-copy-voice-mode" class="text-btn" disabled>Copy translation</button>
+      </div>
+      <p class="caption-help">Tap once to begin. Rosetta detects the spoken language and updates the translation in short, accurate segments. Tap again to stop.</p>
+    </section>
+
+    <section id="caption-panel" class="caption-panel glass-surface hidden" aria-labelledby="caption-title">
+      <div class="caption-head">
+        <div>
+          <span class="section-kicker">Deaf &amp; hard-of-hearing mode</span>
+          <h2 id="caption-title">Live speech captions</h2>
+        </div>
+        <button id="btn-close-captions" class="icon-btn" aria-label="Close live captions">×</button>
+      </div>
+      <div id="caption-display" class="caption-display" role="log" aria-live="polite" aria-atomic="true">
+        <span class="caption-placeholder">Press “Start captions” and speech will appear here.</span>
+      </div>
+      <div class="caption-input-row">
+        <label class="caption-language-field">
+          <span>Spoken language</span>
+          <select id="caption-language" aria-label="Spoken caption language"></select>
+        </label>
+        <div class="mic-meter-wrap" aria-label="Microphone input level">
+          <span>Mic level</span>
+          <div class="mic-meter" aria-hidden="true"><span id="mic-meter-fill"></span></div>
+          <strong id="mic-level-label">Off</strong>
+        </div>
+      </div>
+      <p id="caption-status" class="caption-status" role="status">Microphone is off. Audio is processed by your browser’s speech-recognition service.</p>
+      <div class="caption-actions">
+        <button id="btn-start-captions" class="caption-primary liquid-btn" type="button">
+          <span class="caption-live-dot" aria-hidden="true"></span>
+          Start captions
+        </button>
+        <button id="btn-use-caption" class="text-btn" type="button" disabled>Translate caption</button>
+        <button id="btn-large-caption" class="text-btn" type="button" aria-pressed="false">Large text</button>
+        <button id="btn-clear-caption" class="text-btn" type="button">Clear</button>
+      </div>
+      <p class="caption-help">Tip: choose the spoken language under “From” for better recognition. The completed transcript can be translated into any target language.</p>
+    </section>
+
+    <section id="writing-panel" class="writing-panel glass-surface hidden" aria-labelledby="writing-title">
+      <div class="caption-head">
+        <div>
+          <span class="section-kicker">Multilingual editor</span>
+          <h2 id="writing-title">Writing Studio</h2>
+        </div>
+        <button id="btn-close-writing" class="icon-btn" aria-label="Close Writing Studio">×</button>
+      </div>
+      <textarea id="writing-input" class="writing-input" maxlength="{{ max_length }}" placeholder="Paste writing to humanize, improve, shorten, or rewrite…"></textarea>
+      <div class="writing-controls">
+        <label><span>Action</span><select id="writing-mode">
+          <option value="humanize">Humanize naturally</option>
+          <option value="grammar">Fix grammar</option>
+          <option value="rewrite">Rewrite clearly</option>
+          <option value="shorten">Shorten</option>
+          <option value="expand">Expand naturally</option>
+          <option value="simplify">Simplify</option>
+          <option value="professional">Make professional</option>
+          <option value="conversational">Make conversational</option>
+        </select></label>
+        <label><span>Tone</span><select id="writing-tone">
+          <option value="preserve">Preserve original</option>
+          <option value="friendly">Friendly</option>
+          <option value="confident">Confident</option>
+          <option value="empathetic">Empathetic</option>
+          <option value="persuasive">Persuasive</option>
+          <option value="diplomatic">Diplomatic</option>
+          <option value="enthusiastic">Enthusiastic</option>
+          <option value="humorous">Humorous</option>
+        </select></label>
+        <label><span>Audience</span><select id="writing-audience">
+          <option value="general">General</option>
+          <option value="business">Business</option>
+          <option value="academic">Academic</option>
+          <option value="customer">Customer</option>
+          <option value="children">Children</option>
+          <option value="technical">Technical</option>
+          <option value="social">Social media</option>
+        </select></label>
+      </div>
+      <label class="preserve-field">
+        <span>Never change these terms</span>
+        <input id="preserve-terms" type="text" maxlength="500" placeholder="Rosetta, product names, technical terms…">
+      </label>
+      <div class="writing-actions">
+        <button id="btn-run-writing" class="caption-primary liquid-btn">Improve writing</button>
+        <button id="btn-writing-from-source" class="text-btn">Use translator text</button>
+        <button id="btn-copy-writing" class="text-btn" disabled>Copy result</button>
+      </div>
+      <div id="writing-error" class="error-banner hidden" role="alert"></div>
+      <div id="writing-result" class="writing-result hidden">
+        <div class="writing-tabs" role="tablist">
+          <button class="writing-tab active" data-tab="revised" role="tab" aria-selected="true">Improved</button>
+          <button class="writing-tab" data-tab="original" role="tab" aria-selected="false">Original</button>
+          <button class="writing-tab" data-tab="changes" role="tab" aria-selected="false">Changes</button>
+        </div>
+        <div id="writing-output" class="writing-output" aria-live="polite"></div>
+      </div>
+      <p class="caption-help">Rosetta improves clarity and naturalness; it does not promise to bypass AI-detection systems. Review important facts before using the result.</p>
+    </section>
+
+    <main class="card glass-surface reveal" style="--reveal-order: 1">
+      <div class="card-intro">
+        <div>
+          <span class="section-kicker">Instant translation</span>
+          <h2>Make every word feel native.</h2>
+        </div>
+        <span class="privacy-chip"><span aria-hidden="true">✦</span> Private by design</span>
+      </div>
       <div class="lang-row">
-        <select id="source-lang" aria-label="Source language"></select>
-        <button id="btn-swap" class="icon-btn" title="Swap languages" aria-label="Swap languages">&#8646;</button>
-        <select id="target-lang" aria-label="Target language"></select>
+        <label class="field">
+          <span class="field-label">From</span>
+          <select id="source-lang" aria-label="Source language"></select>
+        </label>
+        <button id="btn-swap" class="icon-btn swap-btn liquid-btn" title="Swap languages (⌘⇧S)" aria-label="Swap languages">&#8646;</button>
+        <label class="field">
+          <span class="field-label">To</span>
+          <select id="target-lang" aria-label="Target language"></select>
+        </label>
       </div>
 
       <div class="panes">
-        <div class="pane">
-          <textarea id="source-text" placeholder="Type to translate…" maxlength="500" spellcheck="false"></textarea>
+        <div class="pane pane-source">
+          <textarea id="source-text" placeholder="Type to translate…" maxlength="{{ max_length }}" spellcheck="false" autofocus></textarea>
+          <div class="voice-control">
+            <span id="voice-status" class="voice-status" role="status"></span>
+            <button id="btn-voice-input" class="voice-button" type="button" aria-label="Start voice input" title="Voice input">
+              <svg class="voice-mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V6a3.5 3.5 0 1 0-7 0v6a3.5 3.5 0 0 0 3.5 3.5Z"/>
+                <path d="M5.5 11.5v.5a6.5 6.5 0 0 0 13 0v-.5M12 18.5V22M9 22h6"/>
+              </svg>
+              <span class="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            </button>
+          </div>
           <div class="pane-foot">
-            <span id="detected-pill" class="pill hidden"></span>
-            <span id="char-count" class="char-count">0 / 500</span>
+            <button type="button" id="detected-pill" class="pill hidden"></button>
+            <button id="btn-clear" class="text-btn hidden" title="Clear (Esc)">Clear</button>
+            <span id="char-count" class="char-count">0 / {{ max_length }}</span>
           </div>
         </div>
-        <div class="pane">
-          <div id="target-text" class="output" aria-live="polite">
-            <span class="hint">Translation will appear here.</span>
+
+        <div class="pane pane-target">
+          <div class="output-wrap">
+            <div id="target-text" class="output" aria-live="polite" aria-busy="false">
+              <span class="hint">Translation will appear here.</span>
+            </div>
+            <div id="skeleton" class="skeleton hidden" aria-hidden="true">
+              <span class="skeleton-line"></span>
+              <span class="skeleton-line"></span>
+              <span class="skeleton-line short"></span>
+            </div>
           </div>
+          <p id="romanization" class="romanization hidden"></p>
+          <p id="translator-note" class="translator-note hidden"></p>
+          <div id="alternates-row" class="alternates-row hidden" aria-label="Alternate phrasings"></div>
           <div class="pane-foot">
             <span id="status-pill" class="status-pill"></span>
-            <button id="btn-copy" class="text-btn" disabled>Copy</button>
+            <div class="pane-foot-actions">
+              <button id="btn-speak" class="text-btn" disabled title="Listen">&#128266; Listen</button>
+              <button id="btn-copy" class="text-btn liquid-btn" disabled title="Copy (⌘⇧C)">Copy</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div id="error-banner" class="error-banner hidden"></div>
+      <div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+      <div class="shortcut-hints" aria-hidden="true">
+        <span><kbd>&#8984;</kbd><kbd>&#9166;</kbd> translate now</span>
+        <span><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>S</kbd> swap</span>
+        <span><kbd>&#8984;</kbd><kbd>&#8679;</kbd><kbd>C</kbd> copy</span>
+        <span><kbd>Esc</kbd> clear</span>
+      </div>
     </main>
 
-    <footer class="footnote">
-      Translations via the <a href="https://mymemory.translated.net" target="_blank" rel="noopener">MyMemory API</a>.
-      Nothing you type is stored by this app.
+    <aside id="history-panel" class="history-panel hidden">
+      <div class="history-head">
+        <span class="panel-title">Recent</span>
+        <button id="btn-clear-history" class="text-btn">Clear</button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </aside>
+
+    <footer class="footnote reveal" style="--reveal-order: 2">
+      <p class="footnote-line">
+        Translated by <a class="sk-underline" id="footer-engine-link" href="https://console.groq.com/docs/models" target="_blank" rel="noopener">Groq</a>,
+        falling back to <a class="sk-underline" href="https://mymemory.translated.net" target="_blank" rel="noopener">MyMemory</a>.
+        Nothing you type is stored on a server.
+      </p>
+      <p class="footnote-line dim">
+        Link animations adapted from <a class="sk-underline sk-underline--reverse" href="https://skiper-ui.com" target="_blank" rel="noopener">Skiper UI</a>.
+      </p>
     </footer>
   </div>
 
+  <!-- Always-on launcher. Iris lives behind Tools as well, but an assistant
+       you have to go two levels down to reach may as well not be there. -->
+  <button id="iris-fab" class="iris-fab" type="button" aria-label="Talk to Iris">
+    <svg viewBox="0 0 96 96" fill="none" aria-hidden="true">
+      <circle cx="48" cy="48" r="33" fill="none" stroke="currentColor" stroke-width="4"/>
+      <ellipse cx="37" cy="43" rx="4" ry="5" fill="currentColor"/>
+      <ellipse cx="59" cy="43" rx="4" ry="5" fill="currentColor"/>
+      <path d="M36 58 Q48 69 60 58" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+
   <script id="languages-data" type="application/json">{{ languages | tojson }}</script>
+  <script id="app-config" type="application/json">{{ {"maxLength": max_length, "provider": provider, "engine": engine} | tojson }}</script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <!-- After app.js: shares its global lexical scope for el/closeTools/etc. -->
+  <script src="{{ url_for('static', filename='js/companion.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/liquid-bg.js') }}"></script>
 </body>
 </html>
