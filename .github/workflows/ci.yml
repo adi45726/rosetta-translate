@@ -34,5 +34,25 @@ jobs:
       - name: Type check (mypy)
         run: mypy src/ web/app.py
 
+      # The browser tests skip themselves when Chrome is absent, so without
+      # this they would silently pass by not running -- which is worse than
+      # not having them, because the badge would still be green.
+      - name: Install Chrome for the browser tests
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - name: Test (pytest)
         run: pytest tests/ -v
+
+      - name: Confirm the browser tests actually ran
+        run: |
+          # A skip here means Chrome was not found and the frontend went
+          # untested. Fail loudly rather than report a green run.
+          pytest tests/test_browser_smoke.py tests/test_browser_map.py \
+                 tests/test_browser_companion.py -q --no-header \
+            | tee /tmp/browser.txt
+          if grep -q "skipped" /tmp/browser.txt; then
+            echo "::error::browser tests skipped -- Chrome missing in CI"
+            exit 1
+          fi
