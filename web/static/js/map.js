@@ -34,6 +34,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 let anchors = [];
 let anchorsLoaded = false;
 
+// Viewport as a viewBox rectangle. Zooming by rewriting viewBox rather than
+// with a CSS transform keeps stroke widths honest (vector-effect handles the
+// borders) and means hit targets move with what is drawn.
+const view = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+const MIN_SPAN = MAP_W / 8;   // furthest in
+const MAX_SPAN = MAP_W;       // whole world, never further out
+let panning = null;
+
 const nameFor = (code) => LANGUAGES.find(([c]) => c === code)?.[1] || code;
 
 function svgEl(tag, attrs) {
@@ -60,6 +68,72 @@ function drawGraticule() {
     }));
   }
 }
+
+function applyView() {
+  // Clamp so the world can never be dragged off-screen entirely.
+  view.w = Math.min(MAX_SPAN, Math.max(MIN_SPAN, view.w));
+  view.h = view.w * (MAP_H / MAP_W);
+  view.x = Math.min(MAP_W - view.w, Math.max(0, view.x));
+  view.y = Math.min(MAP_H - view.h, Math.max(0, view.y));
+  mapSvg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
+  mapSvg.dataset.zoomed = String(view.w < MAX_SPAN - 0.5);
+}
+
+/** Zoom about a point given in map units, so the cursor stays put. */
+function zoomAt(factor, mx, my) {
+  const before = view.w;
+  const next = Math.min(MAX_SPAN, Math.max(MIN_SPAN, view.w * factor));
+  if (next === before) return;
+  const scale = next / before;
+  view.x = mx - (mx - view.x) * scale;
+  view.y = my - (my - view.y) * scale;
+  view.w = next;
+  applyView();
+}
+
+function pointerToMap(event) {
+  const r = mapSvg.getBoundingClientRect();
+  return {
+    mx: view.x + ((event.clientX - r.left) / r.width) * view.w,
+    my: view.y + ((event.clientY - r.top) / r.height) * view.h,
+  };
+}
+
+function resetView() {
+  view.x = 0; view.y = 0; view.w = MAP_W;
+  applyView();
+}
+
+mapSvg.addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const { mx, my } = pointerToMap(event);
+  zoomAt(event.deltaY > 0 ? 1.15 : 1 / 1.15, mx, my);
+}, { passive: false });
+
+mapSvg.addEventListener("pointerdown", (event) => {
+  // Markers handle their own clicks; dragging from one would fight selection.
+  if (event.target.closest("#map-markers g")) return;
+  panning = { ...pointerToMap(event), vx: view.x, vy: view.y };
+  mapSvg.setPointerCapture(event.pointerId);
+  mapSvg.classList.add("is-panning");
+});
+
+mapSvg.addEventListener("pointermove", (event) => {
+  if (!panning) return;
+  const r = mapSvg.getBoundingClientRect();
+  view.x = panning.vx - ((event.clientX - r.left) / r.width) * view.w + (panning.mx - panning.vx);
+  view.y = panning.vy - ((event.clientY - r.top) / r.height) * view.h + (panning.my - panning.vy);
+  applyView();
+});
+
+function endPan(event) {
+  if (!panning) return;
+  panning = null;
+  mapSvg.releasePointerCapture?.(event.pointerId);
+  mapSvg.classList.remove("is-panning");
+}
+mapSvg.addEventListener("pointerup", endPan);
+mapSvg.addEventListener("pointercancel", endPan);
 
 function setReadout(text) {
   mapReadout.textContent = text;
@@ -169,6 +243,7 @@ function openMap() {
   closeTools({ restoreFocus: false });
   mapPanel.classList.remove("hidden");
   syncModalBackdrop();
+  resetView();
   loadBorders();
   loadAnchors().then(refreshMarkerStates);
 }
@@ -184,3 +259,10 @@ document.querySelector('.hero-card[data-tool="map"]')?.addEventListener("click",
 // Keep the highlighted markers in step with the pickers outside the map.
 targetLang.addEventListener("change", () => { if (anchorsLoaded) refreshMarkerStates(); });
 sourceLang.addEventListener("change", () => { if (anchorsLoaded) refreshMarkerStates(); });
+
+// ─── Zoom controls ──────────────────────────────────────────────────────────
+// Buttons as well as wheel: a trackpad pinch is not available to everyone, and
+// the wheel handler is useless on a touch device.
+el("map-zoom-in").addEventListener("click", () => zoomAt(1 / 1.4, view.x + view.w / 2, view.y + view.h / 2));
+el("map-zoom-out").addEventListener("click", () => zoomAt(1.4, view.x + view.w / 2, view.y + view.h / 2));
+el("map-zoom-reset").addEventListener("click", resetView);

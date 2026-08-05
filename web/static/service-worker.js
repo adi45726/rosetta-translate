@@ -1,4 +1,4 @@
-const CACHE_NAME = "rosetta-shell-v6";
+const CACHE_NAME = "rosetta-shell-v7";
 const SHELL = [
   "/",
   "/static/css/style.css",

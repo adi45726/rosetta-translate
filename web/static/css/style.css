@@ -192,17 +192,18 @@ body::before {
 
 /* ─── Top bar ───────────────────────────────────────────────────────────── */
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .mark {
@@ -232,6 +233,7 @@ h1 {
   gap: 8px;
   flex: 1;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .topbar-group {
@@ -244,24 +246,31 @@ h1 {
   border-radius: 13px;
   background: color-mix(in srgb, var(--card) 62%, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  flex: none;
+  max-width: 100%;
 }
 .topbar-primary { order: 1; }
 .topbar-utility { order: 2; }
 .topbar-account { order: 3; }
 .topbar-status {
   order: 4;
+  margin-left: auto;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
 }
+.topbar-account:not(:has(> :not(.hidden))) { display: none; }
 .topbar-group .engine-badge,
 .topbar-group .repo-link { background: transparent; }
 .topbar-group .engine-badge { border-color: transparent; }
 
-@media (max-width: 920px) and (min-width: 701px) {
-  .topbar { align-items: flex-start; }
-  .topbar-actions { flex-wrap: wrap; }
-  .topbar-status { width: 100%; justify-content: flex-end; min-height: 30px; padding-block: 0; }
+@media (max-width: 920px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .topbar-actions { justify-content: flex-start; }
+  .topbar-status { margin-left: auto; }
 }
 
 /* Which engine answered. The dot pulses while the engine is the preferred
@@ -1598,7 +1607,20 @@ body.captions-listening .caption-panel {
   .topbar-primary { flex: 1; }
   .topbar-primary .studio-btn,
   .topbar-primary .upgrade-pill { flex: 1; justify-content: center; }
+  .topbar-account { flex: none; }
+  .topbar-account .auth-user-menu,
+  .topbar-account .signout-btn { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
   .card-intro h2 { font-size: 22px; }
+}
+
+@media (max-width: 360px) {
+  .topbar-primary .studio-btn,
+  .topbar-primary .upgrade-pill {
+    min-width: 0;
+    padding-inline: 9px;
+    font-size: 10.5px;
+  }
+  .topbar-group { gap: 4px; padding: 3px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2777,7 +2799,8 @@ body.modal-open .iris-fab {
     position: sticky;
     top: max(8px, env(safe-area-inset-top));
     z-index: 30;
-    flex-wrap: nowrap;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
     padding: 10px 12px;
     background: color-mix(in srgb, var(--card) 88%, transparent);
     backdrop-filter: blur(24px) saturate(1.4);
@@ -2793,16 +2816,19 @@ body.modal-open .iris-fab {
   .repo-link { display: none; }
 
   .topbar-actions {
-    margin-left: auto;
+    margin-left: 0;
     width: 100%;
-    flex: none;
+    min-width: 0;
     justify-content: space-between;
     flex-wrap: nowrap;
     gap: 6px;
   }
 
   .topbar-primary,
-  .topbar-account { min-height: 46px; }
+  .topbar-account {
+    min-width: 0;
+    min-height: 46px;
+  }
   .topbar-utility,
   .topbar-status { display: none; }
   .topbar-account { margin-left: auto; }
@@ -3597,3 +3623,34 @@ body.modal-open .iris-fab {
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
+
+/* ─── Map zoom ───────────────────────────────────────────────────────────── */
+#map-svg { cursor: grab; touch-action: none; }
+#map-svg.is-panning { cursor: grabbing; }
+
+.map-zoom {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.map-zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--seam);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.map-zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
+.map-zoom-btn:active { transform: scale(0.92); }
