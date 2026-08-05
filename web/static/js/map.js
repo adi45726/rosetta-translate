@@ -77,6 +77,12 @@ function applyView() {
   view.y = Math.min(MAP_H - view.h, Math.max(0, view.y));
   mapSvg.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`);
   mapSvg.dataset.zoomed = String(view.w < MAX_SPAN - 0.5);
+  // The viewBox scales everything drawn, so counter-scale the text and marker
+  // radii to keep them a constant size on screen at any zoom level.
+  const k = view.w / MAP_W;
+  mapSvg.style.setProperty("--map-k", k.toFixed(4));
+  // Labels need room before they help; below this they overlap into noise.
+  mapSvg.dataset.labels = String(view.w <= MAP_W / 2.2);
 }
 
 /** Zoom about a point given in map units, so the cursor stays put. */
@@ -179,6 +185,11 @@ function drawMarkers() {
     g.style.animationDelay = `${Math.min(i * 12, 700)}ms`;
     g.appendChild(svgEl("circle", { cx, cy, r: 9, class: "marker-halo" }));
     g.appendChild(svgEl("circle", { cx, cy, r: 3.2, class: "marker-dot" }));
+
+    // Only drawn once zoomed: at full extent 73 labels overlap into noise.
+    const text = svgEl("text", { x: cx + 5.5, y: cy + 2.6, class: "marker-label" });
+    text.textContent = label;
+    g.appendChild(text);
 
     const title = svgEl("title", {});
     // Says "anchor", never "spoken here": one city cannot represent a language.

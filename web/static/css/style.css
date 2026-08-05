@@ -3684,3 +3684,48 @@ body.modal-open .iris-fab {
 #map-markers g.is-found .marker-dot { fill: var(--ok); }
 #map-markers g.is-found .marker-halo { fill: var(--ok); opacity: 0.42; }
 #map-markers g { transition: opacity 0.25s var(--ease); }
+
+/* ─── Map polish ─────────────────────────────────────────────────────────── */
+/* Ocean depth. The stage is the sea; land sits on top of it. */
+.map-stage {
+  background:
+    radial-gradient(130% 100% at 50% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, var(--pane)), var(--pane));
+}
+
+.border {
+  fill: color-mix(in srgb, var(--accent) 26%, transparent);
+  stroke: color-mix(in srgb, var(--accent) 75%, transparent);
+  stroke-width: 0.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* Counter-scale so markers and labels hold their on-screen size while the
+   viewBox shrinks underneath them. --map-k is the current zoom ratio. */
+.marker-dot { r: calc(3.2 * var(--map-k, 1)); }
+.marker-halo { r: calc(9 * var(--map-k, 1)); }
+
+.marker-label {
+  font-family: var(--sans);
+  font-size: calc(7px * var(--map-k, 1));
+  fill: var(--ink);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: calc(2.4px * var(--map-k, 1));
+  stroke-linejoin: round;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease);
+}
+#map-svg[data-labels="true"] .marker-label { opacity: 0.9; }
+/* The selected pair is always worth naming, zoomed out or not. */
+#map-markers g.is-target .marker-label,
+#map-markers g.is-source .marker-label { opacity: 1; }
+
+.grat { stroke-width: calc(1px * var(--map-k, 1)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-label, #map-markers g { transition: none; }
+}
