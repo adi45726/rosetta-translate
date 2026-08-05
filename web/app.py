@@ -303,6 +303,17 @@ _OPEN_PATHS = {"/api/config", "/api/practice/scenarios", "/api/language-map"}
 # What an anonymous ("guest") token may reach. Mirrors what the browser shows
 # guests -- translation only -- but enforced where it cannot be edited away.
 _GUEST_ALLOWED = {"/api/translate"}
+
+# Features a Pro subscription buys. Enforcement is off unless ENFORCE_PRO_PLAN
+# is set, deliberately: switching it on takes features away from everyone who
+# signed up while they were free, and that is a product decision rather than an
+# engineering one. The mechanism ships tested and dormant so the choice is a
+# single environment variable rather than a code change under time pressure.
+_PRO_ONLY = {
+    "/api/chat", "/api/practice", "/api/write",
+    "/api/expression", "/api/camera-translate", "/api/transcribe",
+}
+_PRO_ENFORCED = os.environ.get("ENFORCE_PRO_PLAN") == "1"
 GUEST_MAX_TEXT_LENGTH = 250
 
 
@@ -343,6 +354,14 @@ def _require_signed_in_user():
     # as a member does. Confirmed against production before this existed.
     if g.is_guest and request.path not in _GUEST_ALLOWED:
         return jsonify({"error": "create a free account to use this feature"}), 403
+
+    # Paid features. Read from the verified token, never from the client and
+    # never from a Firestore document the client can write.
+    g.plan = claims.get("plan") or "free"
+    if _PRO_ENFORCED and g.plan != "pro" and request.path in _PRO_ONLY:
+        return jsonify(
+            {"error": "Rosetta Pro is required for this feature", "upgrade": True}
+        ), 402
 
     # Same reasoning for the length cap the client applies to guests.
     if g.is_guest and request.path == "/api/translate":
@@ -497,6 +516,15 @@ def api_billing_webhook() -> Response | tuple[Response, int]:
                 },
                 merge=True,
             )
+            # Also a custom claim, which is what actually gates anything. A
+            # Firestore document is readable by the client and would have to be
+            # fetched on every request; a claim is baked into the signed ID
+            # token, so the gate reads the plan with no extra I/O and a user
+            # cannot promote themselves by editing their own profile.
+            try:
+                services[0].set_custom_user_claims(uid, {"plan": "pro"})
+            except Exception:
+                log.exception("granted Pro in Firestore but failed to set the claim for %s", uid)
     return jsonify({"received": True})
 
 

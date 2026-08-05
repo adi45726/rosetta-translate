@@ -162,3 +162,53 @@ def test_member_is_not_length_capped_at_the_guest_limit(as_member):
     over = "x" * (web_app.GUEST_MAX_TEXT_LENGTH + 1)
     resp = as_member.post("/api/translate", json={"text": over, "source": "en", "target": "es"}, headers=AUTH)
     assert resp.status_code != 403
+
+
+# ─── Paid plan, read from the verified token ────────────────────────────────
+
+
+def _pro_claims():
+    return {"sub": "pro-uid", "firebase": {"sign_in_provider": "google.com"}, "plan": "pro"}
+
+
+@pytest.fixture
+def pro_enforced(monkeypatch):
+    monkeypatch.setattr(web_app, "_PRO_ENFORCED", True)
+
+
+PRO_ONLY = ["/api/chat", "/api/practice", "/api/write", "/api/expression"]
+
+
+@pytest.mark.parametrize("path", PRO_ONLY)
+def test_free_member_is_refused_pro_features_when_enforced(as_member, pro_enforced, path):
+    resp = as_member.post(path, json={"message": "hi", "text": "hi", "language": "es"}, headers=AUTH)
+    assert resp.status_code == 402
+    assert resp.get_json()["upgrade"] is True
+
+
+@pytest.mark.parametrize("path", PRO_ONLY)
+def test_pro_member_may_use_pro_features(gated, pro_enforced, monkeypatch, path):
+    monkeypatch.setattr(user_auth, "verify", lambda token: _pro_claims())
+    resp = gated.post(path, json={"message": "hi", "text": "hi", "language": "es"}, headers=AUTH)
+    assert resp.status_code != 402
+
+
+def test_plan_comes_from_the_token_not_a_client_field(gated, pro_enforced, monkeypatch):
+    # A user must not be able to promote themselves by sending a plan, or by
+    # editing the Firestore profile the client can write to.
+    monkeypatch.setattr(user_auth, "verify", lambda token: _member_claims())
+    resp = gated.post("/api/chat", json={"message": "hi", "plan": "pro"}, headers=AUTH)
+    assert resp.status_code == 402
+
+
+def test_translation_stays_free_for_members(as_member, pro_enforced):
+    resp = as_member.post("/api/translate", json={"text": "hi", "source": "en", "target": "es"}, headers=AUTH)
+    assert resp.status_code != 402
+
+
+def test_nothing_is_paywalled_while_enforcement_is_off(as_member):
+    # Shipped dormant on purpose: switching it on takes features away from
+    # everyone who signed up while they were free.
+    for path in PRO_ONLY:
+        resp = as_member.post(path, json={"message": "hi", "text": "hi", "language": "es"}, headers=AUTH)
+        assert resp.status_code != 402
