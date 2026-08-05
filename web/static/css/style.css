@@ -3559,17 +3559,19 @@ body.modal-open .iris-fab {
 
 #map-markers g {
   cursor: pointer;
-  /* `backwards`, not `both`: with `both` the fill persists the `from` keyframe
-     whenever the animation does not actually run, and the markers' only route
-     to being visible is a completed animation -- so anything that suppresses
-     animations leaves an empty map. `backwards` still hides them during their
-     stagger delay, but the resting state is the element's own opacity of 1. */
+  /* Opacity is deliberately NOT animated. It was, and the markers' only route
+     to being visible was a completed animation -- so any environment that does
+     not advance animations rendered an empty map. Switching `both` to
+     `backwards` did not fix it: `backwards` still applies the `from` keyframe
+     during the stagger delay, so the markers stayed at zero. Animating only
+     the transform keeps the staggered entrance while leaving visibility to a
+     plain, always-true opacity. */
   opacity: 1;
   animation: marker-in 0.5s var(--ease) backwards;
 }
 @keyframes marker-in {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(-6px) scale(0.6); }
+  to   { transform: translateY(0) scale(1); }
 }
 
 .marker-dot { fill: var(--muted); transition: fill 0.25s, r 0.25s var(--iris-ease); }
