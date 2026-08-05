@@ -3654,3 +3654,33 @@ body.modal-open .iris-fab {
 }
 .map-zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
 .map-zoom-btn:active { transform: scale(0.92); }
+
+/* ─── Map search ─────────────────────────────────────────────────────────── */
+.map-search { display: flex; align-items: center; gap: 10px; }
+#map-search-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--pane);
+  border: 1px solid var(--seam);
+  border-radius: 12px;
+  padding: 9px 13px;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#map-search-input:focus { border-color: var(--accent); }
+.map-search-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* Non-matches fade rather than disappear: keeping them faintly visible
+   preserves the shape of the map while the eye goes to what matched. */
+#map-markers g.is-dimmed { opacity: 0.14; }
+#map-markers g.is-found .marker-dot { fill: var(--ok); }
+#map-markers g.is-found .marker-halo { fill: var(--ok); opacity: 0.42; }
+#map-markers g { transition: opacity 0.25s var(--ease); }

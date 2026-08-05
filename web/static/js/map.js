@@ -266,3 +266,59 @@ sourceLang.addEventListener("change", () => { if (anchorsLoaded) refreshMarkerSt
 el("map-zoom-in").addEventListener("click", () => zoomAt(1 / 1.4, view.x + view.w / 2, view.y + view.h / 2));
 el("map-zoom-out").addEventListener("click", () => zoomAt(1.4, view.x + view.w / 2, view.y + view.h / 2));
 el("map-zoom-reset").addEventListener("click", resetView);
+
+// ─── Search ─────────────────────────────────────────────────────────────────
+// Finding one language among 73 dots by eye is not realistic, and the dense
+// European cluster is the worst case precisely because it holds the most.
+const mapSearch = el("map-search-input");
+const mapSearchCount = el("map-search-count");
+
+function applySearch(query) {
+  const q = query.trim().toLowerCase();
+  let matched = 0;
+  mapMarkers.querySelectorAll("g").forEach((g) => {
+    const a = anchors.find((x) => x.code === g.dataset.code);
+    if (!a) return;
+    // City as well as language: someone looking for "Tokyo" is asking the same
+    // question as someone looking for "Japanese".
+    const hit = !q
+      || nameFor(a.code).toLowerCase().includes(q)
+      || a.city.toLowerCase().includes(q)
+      || a.code.toLowerCase() === q;
+    g.classList.toggle("is-dimmed", Boolean(q) && !hit);
+    g.classList.toggle("is-found", Boolean(q) && hit);
+    if (hit) matched += 1;
+  });
+  mapSearchCount.textContent = q ? `${matched} of ${anchors.length}` : "";
+
+  // A single match is unambiguous, so go to it rather than making the user
+  // hunt for the one dot that stayed bright.
+  if (q && matched === 1) {
+    const found = anchors.find((a) =>
+      nameFor(a.code).toLowerCase().includes(q)
+      || a.city.toLowerCase().includes(q)
+      || a.code.toLowerCase() === q);
+    if (found) focusAnchor(found);
+  }
+}
+
+/** Centre the view on one anchor without changing the zoom level. */
+function focusAnchor(a) {
+  const cx = a.x * MAP_W;
+  const cy = a.y * MAP_H;
+  const span = Math.min(view.w, MAP_W / 3);
+  view.w = span;
+  view.h = span * (MAP_H / MAP_W);
+  view.x = cx - view.w / 2;
+  view.y = cy - view.h / 2;
+  applyView();
+  setReadout(`${nameFor(a.code)} · anchor ${a.city}`);
+}
+
+mapSearch.addEventListener("input", () => applySearch(mapSearch.value));
+mapSearch.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  mapSearch.value = "";
+  applySearch("");
+  resetView();
+});
