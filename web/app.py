@@ -355,6 +355,19 @@ def _require_signed_in_user():
     return None
 
 
+def _test_script() -> str:
+    """A script the browser tests inject into the page, and nothing else can.
+
+    Gated on ROSETTA_ALLOW_TEST_SCRIPT, which only tests/browser.py sets.
+    Without it the query parameter is ignored entirely, so this cannot become a
+    reflected-XSS hole on a deployment that never sets the variable -- and
+    Vercel never does.
+    """
+    if os.environ.get("ROSETTA_ALLOW_TEST_SCRIPT") != "1":
+        return ""
+    return request.args.get("__test_script", "")
+
+
 @app.route("/")
 def index() -> str:
     return render_template(
@@ -364,6 +377,7 @@ def index() -> str:
         engine=engine_label(),
         provider=active_provider(),
         firebase_config=_firebase_config(),
+        test_script=_test_script(),
     )
 
 

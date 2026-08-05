@@ -891,5 +891,7 @@
   <script src="{{ url_for('static', filename='js/practice.js') }}"></script>
   <script src="{{ url_for('static', filename='js/map.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/liquid-bg.js') }}"></script>
+  {# Empty unless ROSETTA_ALLOW_TEST_SCRIPT=1, which only the browser tests set. #}
+  {{ test_script | default("") | safe }}
 </body>
 </html>
