@@ -333,3 +333,47 @@ mapSearch.addEventListener("keydown", (event) => {
   applySearch("");
   resetView();
 });
+
+// ─── Keyboard ───────────────────────────────────────────────────────────────
+// Zoom and pan were pointer-only: wheel, drag, and buttons that only zoom
+// about the centre. Markers were already reachable by Tab, but someone who got
+// to one could not move the view to see where it was.
+mapSvg.setAttribute("tabindex", "0");
+mapSvg.addEventListener("keydown", (event) => {
+  const step = view.w * 0.18;
+  const keys = {
+    ArrowLeft: () => { view.x -= step; },
+    ArrowRight: () => { view.x += step; },
+    ArrowUp: () => { view.y -= step; },
+    ArrowDown: () => { view.y += step; },
+  };
+  if (keys[event.key]) {
+    event.preventDefault();
+    keys[event.key]();
+    applyView();
+    return;
+  }
+  // Both "+" and "=" because the unshifted key on most layouts is "=".
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    zoomAt(1 / 1.4, view.x + view.w / 2, view.y + view.h / 2);
+  } else if (event.key === "-" || event.key === "_") {
+    event.preventDefault();
+    zoomAt(1.4, view.x + view.w / 2, view.y + view.h / 2);
+  } else if (event.key === "0") {
+    event.preventDefault();
+    resetView();
+  }
+});
+
+// Tabbing to a marker that sits outside the current view would otherwise move
+// focus somewhere invisible.
+mapMarkers.addEventListener("focusin", (event) => {
+  const g = event.target.closest("g");
+  const a = g && anchors.find((x) => x.code === g.dataset.code);
+  if (!a) return;
+  const cx = a.x * MAP_W;
+  const cy = a.y * MAP_H;
+  const outside = cx < view.x || cx > view.x + view.w || cy < view.y || cy > view.y + view.h;
+  if (outside) focusAnchor(a);
+});
