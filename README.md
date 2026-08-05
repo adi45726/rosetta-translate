@@ -103,7 +103,7 @@ python web/app.py   # http://127.0.0.1:5053
 ```bash
 ruff check .              # lint
 mypy src/ web/app.py      # type check
-pytest tests/ -v          # 103 tests, no live network calls
+pytest tests/ -v          # 248 tests, no live network calls
 ```
 
 The same three commands run in CI (`.github/workflows/ci.yml`) on every push
@@ -174,6 +174,26 @@ active, rather than hardcoding a limit that may be wrong.
 - Keyboard shortcuts (⌘↵ / ⌘⇧S / ⌘⇧C / Esc), shareable URLs, local history,
   click-to-lock detected language, and `prefers-reduced-motion` honoured
   throughout.
+
+### Frontend tests
+
+Every JavaScript bug this project shipped reached a user, because there were no
+frontend tests: a regex that failed to parse and killed a whole module, a panel
+rendering behind its own backdrop, a stale closure, a shortcut dead on macOS.
+The Python suite passed through all of them.
+
+[`tests/browser.py`](tests/browser.py) runs the real page in headless Chrome,
+executes assertions inside it, and returns the result as JSON through the
+document title. Deliberately not Playwright or Selenium: both bring a large
+dependency and a driver to keep in step with the browser, and this project has
+no build step. Tests skip where Chrome is absent, and **CI fails if they skip**
+— a green badge over an untested frontend is worse than no tests at all.
+
+Each test is pinned to a failure that actually happened, and the suite is
+checked against them: reintroducing the original `auth.js` regex fails it, and
+reverting passes. A test that cannot fail for the reason it was written is not
+worth having.
+
 
 ## Language Map
 
