@@ -175,6 +175,41 @@ active, rather than hardcoding a limit that may be wrong.
   click-to-lock detected language, and `prefers-reduced-motion` honoured
   throughout.
 
+## Language Map
+
+Pick a target language by its place on the globe: 73 markers, zoom, pan and
+search by language or city.
+
+The data provenance matters more than the feature, because a map is very easy
+to fake convincingly:
+
+- **Borders are real.** Natural Earth 1:110m Admin 0 Countries (public domain),
+  177 countries. [`tools/build_world_paths.py`](tools/build_world_paths.py)
+  projects and simplifies them offline into a 76 kB static file — Douglas-Peucker,
+  which *drops* vertices but never moves one, so coastlines lose detail without
+  anything being invented. Nothing is hand-drawn.
+- **Marker coordinates are checked, not trusted.** They were written by hand, so
+  [`tools/verify_anchors.py`](tools/verify_anchors.py) resolves each against the
+  Natural Earth polygons by point-in-polygon and reports the country it lands
+  in. All 73 resolve correctly. Istanbul and Durban fall 15.4 km and 12.7 km
+  outside their country outlines — both coastal, and at 1:110m a coastline
+  vertex sits well off the true shore, so that is border resolution rather than
+  a wrong coordinate.
+- **Borders and markers share one projection** (equirectangular), which is what
+  puts each marker *inside* its country rather than near it.
+- **An anchor is not a claim about where a language is spoken.** It is one
+  representative city, because a marker has to go somewhere. Most of these
+  languages are spoken across many countries and a single point cannot say so.
+  The UI says "anchor" throughout.
+- **Esperanto and Latin have no marker rather than an invented one** — one is
+  constructed with no geography, the other has no living centre.
+
+[`tests/test_geography.py`](tests/test_geography.py) keeps it honest: every
+anchor must name a supported language, omissions must be the two documented
+ones, coordinates must be on Earth, nothing may sit at null island, and an
+unknown code must yield no marker rather than a defaulted position.
+
+
 ## Project structure
 
 ```
@@ -186,6 +221,9 @@ src/translator/
   detect.py       langdetect wrapper, seeded for determinism
   result.py       TranslationResult — the shape every provider returns
   exceptions.py   TranslationError / ProviderError / ProviderUnavailableError / DetectionError
+tools/
+  build_world_paths.py   Natural Earth GeoJSON -> projected, simplified SVG paths
+  verify_anchors.py      resolves every map anchor against real country polygons
 web/
   app.py          Flask routes: /, /api/translate, /api/config
   templates/, static/   UI, animations, WebGL backdrop
