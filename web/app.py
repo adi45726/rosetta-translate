@@ -13,6 +13,10 @@ import sys
 import threading
 import time
 from collections import OrderedDict, deque
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:  # the SDK is imported lazily inside the checkout handler
+    from stripe.params.checkout._session_create_params import SessionCreateParams
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -400,12 +404,27 @@ def index() -> str:
     )
 
 
-_BILLING_MARKETS = {
+class BillingMarket(TypedDict):
+    """One market's pricing.
+
+    Typed rather than a plain dict because Stripe's SDK expects a TypedDict for
+    session parameters: with `dict[str, object]` values, `market["amount"]`
+    widens the whole params literal and mypy rejects the call. This also means a
+    typo in a market entry is caught here rather than at a checkout attempt.
+    """
+
+    currency: str
+    amount: int
+    price: str
+    methods: list[str]
+
+
+_BILLING_MARKETS: dict[str, BillingMarket] = {
     "IN": {"currency": "inr", "amount": 79900, "price": "₹799", "methods": ["UPI", "Cards"]},
     "GB": {"currency": "gbp", "amount": 900, "price": "£9", "methods": ["Apple Pay", "Cards"]},
     "US": {"currency": "usd", "amount": 1200, "price": "$12", "methods": ["Apple Pay", "Google Pay", "Cards"]},
 }
-_DEFAULT_BILLING_MARKET = {
+_DEFAULT_BILLING_MARKET: BillingMarket = {
     "currency": "usd", "amount": 1200, "price": "$12", "methods": ["Cards", "Local methods"]
 }
 
@@ -451,33 +470,44 @@ def api_billing_checkout() -> Response | tuple[Response, int]:
 
     try:
         client = stripe.StripeClient(api_key, stripe_version="2026-06-24.dahlia")
-        session = client.v1.checkout.sessions.create(
-            {
-                "mode": "payment",
-                "integration_identifier": integration_id,
-                "line_items": [
-                    {
-                        "price_data": {
-                            "currency": market["currency"],
-                            "unit_amount": market["amount"],
-                            "product_data": {
-                                "name": "Rosetta Pro Pass",
-                                "description": "Unlimited translation workspace and every Rosetta tool.",
-                            },
+        # Annotated against Stripe's own TypedDict rather than passed as a bare
+        # dict. A bare literal widens to dict[str, <union>] -- the optional
+        # fields drag None into it -- and the SDK rejects that, which is what
+        # broke CI. Annotating checks the contents instead of casting past them,
+        # so a wrong key or type is caught here rather than at a live checkout.
+        params: SessionCreateParams = {
+            "mode": "payment",
+            "integration_identifier": integration_id,
+            "line_items": [
+                {
+                    "price_data": {
+                        "currency": market["currency"],
+                        "unit_amount": market["amount"],
+                        "product_data": {
+                            "name": "Rosetta Pro Pass",
+                            "description": "Unlimited translation workspace and every Rosetta tool.",
                         },
-                        "quantity": 1,
-                    }
-                ],
-                # Deliberately omit payment_method_types. Stripe dynamically
-                # presents eligible wallets and local methods for this market.
-                "success_url": f"{origin}/?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
-                "cancel_url": f"{origin}/?payment=cancelled",
-                "customer_email": claims.get("email") or None,
-                "client_reference_id": uid or None,
-                "metadata": {"firebase_uid": uid, "product": "pro_pass"},
-                "billing_address_collection": "auto",
-            }
-        )
+                    },
+                    "quantity": 1,
+                }
+            ],
+            # Deliberately omit payment_method_types. Stripe dynamically
+            # presents eligible wallets and local methods for this market.
+            "success_url": f"{origin}/?payment=success&session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url": f"{origin}/?payment=cancelled",
+            "metadata": {"firebase_uid": uid, "product": "pro_pass"},
+            "billing_address_collection": "auto",
+        }
+        # Set only when known. Stripe types both as str, and sending null for
+        # an unknown value is not the same as omitting the field -- which is
+        # what the previous `or None` did, for a signed-out or email-less user.
+        email = claims.get("email")
+        if isinstance(email, str) and email:
+            params["customer_email"] = email
+        if uid:
+            params["client_reference_id"] = uid
+
+        session = client.v1.checkout.sessions.create(params)
     except Exception as exc:
         log.exception("Stripe Checkout session creation failed")
         message = getattr(exc, "user_message", None) or "Checkout could not be started. Please try again."
